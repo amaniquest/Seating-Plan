@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Exam Seating Plan Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+--ink:#1B2A4A;
+--ink-soft:#33456B;
+--paper:#F7F5EF;
+--card:#FFFFFF;
+--gold:#AD7F3E;
+--gold-soft:#E7D9BA;
+--maroon:#7A2E35;
+--slate:#5B6B82;
+--line:#E1DDD0;
+--red:#A9402F;
+--red-soft:#FBEEEC;
+--green:#3E6B4F;
+--radius:4px;
+--shadow-sm:0 1px 2px rgba(27,42,74,.05);
+--shadow-md:0 10px 30px rgba(27,42,74,.10);
+--font-display:'Playfair Display', Georgia, 'Times New Roman', serif;
+--font-body:'Inter', "Segoe UI", system-ui, -apple-system, sans-serif;
+--font-mono:'IBM Plex Mono', "Courier New", monospace;
+}
+*{box-sizing:border-box;}
+@media (prefers-reduced-motion: reduce){
+*{transition:none !important;animation:none !important;}
+}
+body{
+margin:0;
+background-color:var(--paper);
+background-image:radial-gradient(rgba(27,42,74,0.05) 1px, transparent 1px);
+background-size:20px 20px;
+color:var(--ink);
+font-family:var(--font-body);
+font-size:15px;
+line-height:1.55;
+-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 24px 90px;}
+/* Header / masthead */
+.masthead{
+position:relative;
+border-bottom:3px solid var(--ink);
+padding-bottom:20px;
+margin-bottom:36px;
+display:flex;
+align-items:flex-end;
+justify-content:space-between;
+gap:20px;
+flex-wrap:wrap;
+}
+.masthead::after{
+content:"";position:absolute;left:0;right:0;bottom:-6px;height:1px;background:var(--gold);
+}
+.masthead h1{
+font-family:var(--font-display);
+font-size:30px;
+font-weight:800;
+margin:0 0 6px;
+letter-spacing:0.1px;
+color:var(--ink);
+}
+.masthead .sub{
+color:var(--maroon);
+font-size:11.5px;
+font-weight:600;
+font-family:var(--font-mono);
+text-transform:uppercase;
+letter-spacing:2px;
+}
+.masthead-tools{display:flex;align-items:center;gap:16px;}
+.seal{
+width:60px;height:60px;border-radius:50%;flex-shrink:0;position:relative;
+display:flex;align-items:center;justify-content:center;
+background:
+radial-gradient(circle at center, var(--card) 0 61%, transparent 62%),
+repeating-conic-gradient(var(--gold) 0deg 6deg, transparent 6deg 18deg);
+border:1px solid var(--gold);
+}
+.seal::before{
+content:"";position:absolute;inset:6px;border:1px solid var(--gold-soft);border-radius:50%;
+}
+.seal span{
+position:relative;font-family:var(--font-display);font-weight:800;color:var(--ink);
+font-size:10px;text-align:center;line-height:1.2;letter-spacing:0.4px;
+}
+section.step{
+background:var(--card);
+border:1px solid var(--line);
+border-radius:var(--radius);
+box-shadow:var(--shadow-sm);
+padding:26px 28px;
+margin-bottom:22px;
+transition:box-shadow .2s ease;
+}
+section.step:hover{box-shadow:var(--shadow-md);}
+.step-head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px;}
+.step-num{
+font-family:var(--font-display);font-size:14px;font-weight:700;color:#fff;
+background:var(--ink);border:2px solid var(--gold);width:28px;height:28px;border-radius:50%;
+display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-head h2{font-family:var(--font-display);font-size:19px;margin:0;font-weight:700;letter-spacing:0.2px;color:var(--ink);}
+.step-head .hint{color:var(--slate);font-size:12.5px;margin-left:auto;font-style:italic;}
+label{display:block;font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--slate);margin-bottom:6px;}
+input[type=text],input[type=date],input[type=number],input[type=password]{
+width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
+font-size:14px;color:var(--ink);background:#fff;font-family:var(--font-body);
+transition:border-color .15s, box-shadow .15s;
+}
+input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:700px){.grid3{grid-template-columns:1fr;}}
+.file-drop{
+border:1.5px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;
+color:var(--slate);cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;
+}
+.file-drop:hover{border-color:var(--gold);background:#FDFBF3;}
+.file-drop:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.file-drop input{display:none;}
+.file-drop .fname{color:var(--ink);font-weight:600;margin-top:6px;font-family:var(--font-mono);font-size:13px;}
+table.data{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px;}
+table.data th{
+text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-family:var(--font-mono);
+color:#fff;background:var(--ink);border-bottom:2px solid var(--gold);padding:9px 10px;font-weight:600;
+}
+table.data td{padding:8px 10px;border-bottom:1px solid var(--line);}
+table.data tr:last-child td{border-bottom:none;}
+table.data tbody tr:nth-child(even):not(.batch-row){background:#FBFAF6;}
+table.data tbody tr:hover td{background:var(--gold-soft);}
+table.data tr.batch-row td{background:#FBFAF7;}
+table.data tr.batch-row:hover td{background:var(--gold-soft);}
+table.data tr.batch-row td:first-child{padding-left:16px;}
+.badge{
+display:inline-block;background:var(--ink);color:#fff;font-family:var(--font-mono);
+font-size:11px;padding:3px 9px;border-radius:20px;letter-spacing:0.2px;
+}
+.room-row{display:grid;grid-template-columns:1fr 110px 170px 130px 36px;gap:10px;margin-bottom:10px;align-items:end;}
+.pin-trigger{
+width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
+background:#fff;font-size:13px;color:var(--ink);font-family:var(--font-body);cursor:pointer;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s,box-shadow .15s;
+}
+.pin-trigger:hover{border-color:var(--gold);}
+.pin-panel{
+display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;
+border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);
+max-height:220px;overflow-y:auto;padding:6px;margin-top:4px;
+}
+.pin-option{display:flex;align-items:center;gap:9px;padding:7px 6px;font-size:13px;color:var(--ink);cursor:pointer;border-radius:var(--radius);}
+.pin-option:hover{background:var(--paper);}
+.pin-option input{width:15px;height:15px;margin:0;accent-color:var(--gold);flex-shrink:0;}
+.pin-option input:disabled{opacity:0.35;}
+.pin-trigger:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.use-toggle{display:flex;align-items:center;gap:7px;height:38px;}
+.use-toggle input{width:16px;height:16px;margin:0;accent-color:var(--gold);}
+.use-toggle span{font-size:12.5px;color:var(--slate);}
+.room-row.disabled{opacity:0.45;}
+.remove-btn{
+background:none;border:1px solid var(--line);border-radius:var(--radius);color:var(--red);
+height:38px;cursor:pointer;font-size:15px;transition:background .15s,border-color .15s;
+}
+.remove-btn:hover{background:var(--red-soft);border-color:var(--red);}
+button.action{
+background:var(--ink);color:#fff;border:1px solid var(--ink);padding:11px 22px;border-radius:var(--radius);
+font-size:13.5px;letter-spacing:0.4px;cursor:pointer;font-weight:600;font-family:var(--font-body);
+box-shadow:var(--shadow-sm);transition:background .15s,box-shadow .15s,transform .1s;
+}
+button.action:hover{background:var(--ink-soft);box-shadow:var(--shadow-md);transform:translateY(-1px);}
+button.action:active{transform:translateY(0);}
+button.action:disabled{background:#B7BEC9;border-color:#B7BEC9;cursor:not-allowed;box-shadow:none;transform:none;}
+button.ghost{
+background:none;border:1px solid var(--ink);color:var(--ink);padding:10px 18px;border-radius:var(--radius);
+cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-body);transition:background .15s,color .15s;
+}
+button.ghost:hover{background:var(--ink);color:#fff;}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.row-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+.status{font-size:13px;margin-top:10px;}
+.status.err{color:var(--red);}
+.status.ok{color:var(--green);}
+.room-card{border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px 22px;margin-bottom:18px;page-break-inside:avoid;background:var(--card);}
+.room-card h3{margin:0 0 4px;font-family:var(--font-display);font-size:19px;color:var(--ink);}
+.room-card .meta{color:var(--slate);font-size:12.5px;margin-bottom:8px;font-family:var(--font-mono);}
+.room-card .batches{margin-bottom:6px;}
+.room-card .batches .badge{margin-right:6px;background:var(--gold);}
+.batch-breakdown{margin-bottom:12px;}
+.overflow-note{
+font-size:12px;color:var(--red);background:var(--red-soft);border:1px solid var(--red);
+border-radius:var(--radius);padding:7px 11px;margin-bottom:10px;
+}
+.mini-badge{
+display:inline-block;font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);background:var(--paper);
+border:1px solid var(--line);padding:3px 9px;border-radius:20px;margin:0 6px 4px 0;
+}
+.leftover{
+border:1px solid var(--red);background:var(--red-soft);border-radius:var(--radius);
+padding:14px 18px;margin-bottom:18px;color:var(--red);font-size:13.5px;
+}
+.info-note{
+border:1px solid var(--line);background:#F3F6FA;border-radius:var(--radius);
+padding:12px 16px;margin-bottom:18px;color:var(--ink-soft);font-size:13.5px;
+}
+.print-meta{display:none;}
+@media print{
+body{background:#fff;}
+.no-print{display:none !important;}
+.wrap{max-width:100%;padding:0;}
+.room-card{border:none;box-shadow:none;padding:0;margin:0 0 0;page-break-after:always;}
+.room-card:last-child{page-break-after:auto;}
+.print-meta{display:block;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px;}
+.print-meta h2{font-family:var(--font-display);margin:0 0 2px;font-size:20px;}
+.print-meta .line{color:var(--slate);font-size:12px;}
+}
+</style>
+</head>
+<body>
+<div id="loginOverlay" style="position:fixed;inset:0;background:var(--paper);background-image:radial-gradient(rgba(27,42,74,0.05) 1px, transparent 1px);background-size:20px 20px;z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;">
+<div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:36px 40px;max-width:360px;width:100%;">
+<div class="seal" style="margin:0 auto 18px;"><span>SEAT<br>PLAN</span></div>
+<div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--ink);text-align:center;margin-bottom:4px;">Exam Seating Plan Generator</div>
+<div style="color:var(--slate);font-size:12.5px;text-align:center;margin-bottom:24px;">Sign in to continue</div>
+<label for="loginUser">Username</label>
+<input type="text" id="loginUser" autocomplete="username" style="margin-bottom:14px;">
+<label for="loginPass">Password</label>
+<input type="password" id="loginPass" autocomplete="current-password" style="margin-bottom:8px;">
+<div class="status err" id="loginError" style="min-height:16px;"></div>
+<button class="action" type="button" id="loginBtn" style="width:100%;margin-top:10px;">Sign in</button>
+</div>
+</div>
+<div class="wrap" id="appContent" style="display:none;">
+<div class="masthead no-print">
+<div>
+<div class="sub">Offline Utility</div>
+<h1>Exam Seating Plan Generator</h1>
+</div>
+<div class="masthead-tools">
+<button class="ghost" id="logoutBtn" type="button">Logout</button>
+<button class="ghost" id="resetBtn" type="button" style="color:var(--red);border-color:var(--red);">Reset</button>
+<div class="seal"><span>SEAT<br>PLAN</span></div>
+</div>
+</div>
+<div id="resetModalOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(27,42,74,0.5);z-index:1000;align-items:center;justify-content:center;">
+<div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:32px 36px;max-width:380px;text-align:center;">
+<div style="font-family:var(--font-display);font-size:19px;color:var(--ink);margin-bottom:10px;font-weight:800;">Reset everything?</div>
+<div style="color:var(--slate);font-size:13.5px;margin-bottom:24px;line-height:1.55;">This clears the exam details, uploaded student list, class/batch selection, halls, transport file, and any generated results. This cannot be undone.</div>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button class="action" type="button" id="resetConfirmYes" style="background:var(--red);border-color:var(--red);">Yes, reset</button>
+<button class="ghost" type="button" id="resetConfirmNo">No, cancel</button>
+</div>
+</div>
+</div>
+<div id="generateConfirmOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(27,42,74,0.5);z-index:1000;align-items:center;justify-content:center;">
+<div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:32px 36px;max-width:380px;text-align:center;">
+<div id="generateConfirmTitle" style="font-family:var(--font-display);font-size:19px;color:var(--ink);margin-bottom:10px;font-weight:800;">Generate?</div>
+<div id="generateConfirmBody" style="color:var(--slate);font-size:13.5px;margin-bottom:24px;line-height:1.55;"></div>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button class="action" type="button" id="generateConfirmYes">Yes, generate</button>
+<button class="ghost" type="button" id="generateConfirmNo">No, cancel</button>
+</div>
+</div>
+</div>
+<!-- STEP 1: Exam details -->
+<section class="step no-print">
+
+<div class="step-head">
+<div class="step-num">1</div>
+<h2>Exam details</h2>
+<div class="hint">Shown on the printed sheets</div>
+</div>
+<div style="margin-bottom:18px;">
+<label>Test type</label>
+<div style="display:flex;gap:22px;">
+<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
+<input type="radio" name="testType" id="testTypeOffline" value="offline" checked style="width:16px;height:16px;margin:0;">
+Offline test (halls)
+</label>
+<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
+<input type="radio" name="testType" id="testTypeOnline" value="online" style="width:16px;height:16px;margin:0;">
+Online test (time slots)
+</label>
+</div>
+</div>
+<div class="grid3">
+<div>
+<label for="instName">Institute name</label>
+<input type="text" id="instName" placeholder="e.g. Sunrise Academy">
+</div>
+<div>
+<label for="examTitle">Exam / test title</label>
+<input type="text" id="examTitle" placeholder="e.g. Monthly Test - July">
+</div>
+<div>
+<label for="examDate">Date</label>
+<input type="date" id="examDate">
+</div>
+</div>
+</section>
+<!-- STEP 2: Upload -->
+<section class="step no-print">
+<div class="step-head">
+<div class="step-num">2</div>
+<h2>Upload student list</h2>
+<div class="hint">Upload the full list (all classes, one or more files) — you'll tick which ones are in this test below</div>
+</div>
+<label class="file-drop" for="fileInput">
+<div>Click to choose one or more .xlsx / .xls / .csv files</div>
+<div class="fname" id="fileName">No files selected</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple>
+</label>
+<div class="status" id="uploadStatus"></div>
+<table class="data" id="batchTable" style="display:none;">
+<thead><tr><th style="width:32px;"></th><th>Class</th><th>Students</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="row-actions" id="classSelectActions" style="display:none;">
+<button class="ghost" id="selectAllClassesBtn" type="button">Select all</button>
+<button class="ghost" id="selectNoneClassesBtn" type="button">Select none</button>
+</div>
+<div class="status" id="classSelectStatus"></div>
+<div id="transportUploadContainer" style="display:none;margin-top:22px;padding-top:20px;border-top:1px solid var(--line);">
+<div style="font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:var(--slate);margin-bottom:10px;">Transport students list</div>
+<label class="file-drop" for="transportFileInput">
+<div>Click to choose the transport students list (.xlsx / .xls / .csv)</div>
+<div class="fname" id="transportFileName">No file selected</div>
+<input type="file" id="transportFileInput" accept=".xlsx,.xls,.csv">
+</label>
+<div class="status" id="transportStatus"></div>
+</div>
+</section>
+<!-- STEP 3: Rooms -->
+<section class="step no-print" id="hallsSection">
+<div class="step-head">
+<div class="step-num">3</div>
+<h2>Halls</h2>
+<div class="hint">Add each hall and its capacity — optionally pin one class to a hall</div>
+</div>
+<div class="status" id="capacitySummary" style="margin-bottom:6px;"></div>
+<div class="status" id="selectedSummary" style="margin-bottom:14px;"></div>
+<div id="roomRows"></div>
+<div class="row-actions">
+<button class="ghost" id="addRoomBtn" type="button">+ Add hall</button>
+<button class="ghost" id="saveRoomsBtn" type="button">Save room list</button>
+<button class="ghost" id="loadRoomsBtn" type="button">Load saved room list</button>
+<input type="file" id="loadRoomsInput" accept=".json" style="display:none;">
+</div>
+<div class="status" id="roomStatus"></div>
+</section>
+<!-- STEP 3 (online): Slots -->
+<section class="step no-print" id="slotsSection" style="display:none;">
+<div class="step-head">
+<div class="step-num">3</div>
+<h2>Time slots</h2>
+<div class="hint">Transport students are fixed to Slot 1</div>
+</div>
+<div class="status" style="margin-bottom:14px;">Only the classes/batches ticked in Step 2 are included here — untick anything not taking this test before assigning slots.</div>
+<div style="max-width:220px;margin-bottom:16px;">
+<label for="slotCapacity">Seats per slot (capacity)</label>
+<input type="number" id="slotCapacity" min="1" value="58">
+</div>
+<table class="data" style="margin-top:0;margin-bottom:16px;">
+<thead><tr><th>Slot</th><th>Timing</th><th>Who</th></tr></thead>
+<tbody>
+<tr><td>Slot 1</td><td>9:00 AM – 12:00 PM</td><td>Transport students (fixed) + overflow if Slots 2 &amp; 3 fill up</td></tr>
+<tr><td>Slot 2</td><td>12:15 PM – 3:15 PM</td><td>Remaining students (shuffled, filled first)</td></tr>
+<tr><td>Slot 3</td><td>3:30 PM – 6:30 PM</td><td>Remaining students (shuffled, filled first)</td></tr>
+</tbody>
+</table>
+</section>
+<!-- STEP 4: Generate -->
+<section class="step no-print">
+<div class="step-head">
+<div class="step-num">4</div>
+<h2>Generate</h2>
+<div class="hint" id="generateHint">Random shuffle · max 2 classes per hall</div>
+</div>
+<div class="row-actions" id="offlineGenerateControls">
+<button class="action" id="generateBtn" type="button">Generate seating plan</button>
+<button class="ghost" id="reshuffleBtn" type="button" style="display:none;">Reshuffle</button>
+<button class="ghost" id="printBtn" type="button" style="display:none;">Print sheets</button>
+<button class="ghost" id="excelBtn" type="button" style="display:none;">Download Seating Excel</button>
+<button class="ghost" id="attendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
+</div>
+<div class="row-actions" id="onlineGenerateControls" style="display:none;">
+<button class="action" id="assignSlotsBtn" type="button">Assign slots</button>
+<button class="ghost" id="reshuffleSlotsBtn" type="button" style="display:none;">Reshuffle (slots 2 &amp; 3)</button>
+<button class="ghost" id="slotExcelBtn" type="button" style="display:none;">Download Slot Assignment Excel</button>
+<button class="ghost" id="slotAttendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
+</div>
+<div class="status" id="genStatus"></div>
+</section>
+<div class="print-meta">
+<h2 id="printInst"></h2>
+<div class="line" id="printExam"></div>
+</div>
+<div id="results"></div>
+</div>
+<script>
+(function(){
+// ---- Login gate -----------------------------------------------------
+// NOTE: this is a client-side check only, for casual/accidental-access
+// protection — the credentials live in this file's own source, so
+// anyone who opens "view source" on the page can read them. It is NOT
+// real security. To change the username/password, edit the two
+// constants below and re-save this file.
+const APP_USERNAME = 'Aman Goyal';
+const APP_PASSWORD = 'Ananya@123';
+const SESSION_KEY = 'examSeatingPlanSession';
+const SESSION_TIMEOUT_MS = 10 * 60 * 1000; // auto-logout after 10 min of inactivity
+const loginOverlay = document.getElementById('loginOverlay');
+const appContent = document.getElementById('appContent');
+const loginUser = document.getElementById('loginUser');
+const loginPass = document.getElementById('loginPass');
+const loginError = document.getElementById('loginError');
+const loginBtn = document.getElementById('loginBtn');
+function saveSession(lastActivity){
+try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({loggedIn:true, lastActivity})); } catch(e){}
+}
+function clearSession(){
+try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+}
+function getSession(){
+try {
+const raw = sessionStorage.getItem(SESSION_KEY);
+return raw ? JSON.parse(raw) : null;
+} catch(e){ return null; }
+}
+function showApp(){
+loginOverlay.style.display = 'none';
+appContent.style.display = '';
+}
+function showLogin(){
+appContent.style.display = 'none';
+loginOverlay.style.display = 'flex';
+loginUser.value = '';
+loginPass.value = '';
+loginError.textContent = '';
+}
+let lastActivityTime = Date.now();
+function tryLogin(){
+if (loginUser.value === APP_USERNAME && loginPass.value === APP_PASSWORD){
+lastActivityTime = Date.now();
+saveSession(lastActivityTime);
+showApp();
+} else {
+loginError.textContent = 'Incorrect username or password.';
+}
+}
+loginBtn.addEventListener('click', tryLogin);
+loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+loginUser.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginPass.focus(); });
+// Restore the session across a page refresh or the Reset button (which
+// reloads the page) — but only within the same browser tab, since
+// sessionStorage clears itself the moment the tab/browser is closed.
+// If more than 10 minutes have passed since the last activity, the
+// session is treated as expired and the login screen shows again.
+(function restoreSession(){
+const session = getSession();
+if (session && session.loggedIn && (Date.now() - session.lastActivity) < SESSION_TIMEOUT_MS){
+lastActivityTime = session.lastActivity;
+showApp();
+} else {
+clearSession();
+}
+})();
+function markActivity(){
+if (appContent.style.display === 'none') return;
+lastActivityTime = Date.now();
+}
+['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => document.addEventListener(evt, markActivity, {passive:true}));
+setInterval(() => {
+if (appContent.style.display === 'none') return;
+if (Date.now() - lastActivityTime >= SESSION_TIMEOUT_MS){
+clearSession();
+showLogin();
+} else {
+saveSession(lastActivityTime);
+}
+}, 15000);
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) logoutBtn.addEventListener('click', () => { clearSession(); showLogin(); });
+let students = []; // {name, roll, cls, batch, father} — the EFFECTIVE (selected-classes) list used everywhere downstream
+let allStudentsRaw = []; // full parsed upload, before class/batch selection filtering
+let batchList = []; // {name, count} — class breakdown of the full upload, used to build the selection checkboxes
+let selectedBatches = new Set(); // individual batch names currently ticked
+let lastResults = null; // for reshuffle without re-reading rooms
+let transportRaw = []; // {name, roll} parsed from the transport students file
+let lastSlotResults = null; // {slot1, slot2, slot3, unmatchedTransport}
+let testType = 'offline'; // 'offline' | 'online'
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const uploadStatus = document.getElementById('uploadStatus');
+const batchTable = document.getElementById('batchTable');
+const classSelectActions = document.getElementById('classSelectActions');
+const classSelectStatus = document.getElementById('classSelectStatus');
+const selectAllClassesBtn = document.getElementById('selectAllClassesBtn');
+const selectNoneClassesBtn = document.getElementById('selectNoneClassesBtn');
+const roomRows = document.getElementById('roomRows');
+const addRoomBtn = document.getElementById('addRoomBtn');
+const generateBtn = document.getElementById('generateBtn');
+const reshuffleBtn = document.getElementById('reshuffleBtn');
+const printBtn = document.getElementById('printBtn');
+const excelBtn = document.getElementById('excelBtn');
+const attendanceBtn = document.getElementById('attendanceBtn');
+const genStatus = document.getElementById('genStatus');
+const results = document.getElementById('results');
+const hallsSection = document.getElementById('hallsSection');
+const slotsSection = document.getElementById('slotsSection');
+const transportUploadContainer = document.getElementById('transportUploadContainer');
+const offlineGenerateControls = document.getElementById('offlineGenerateControls');
+const onlineGenerateControls = document.getElementById('onlineGenerateControls');
+const generateHint = document.getElementById('generateHint');
+const transportFileInput = document.getElementById('transportFileInput');
+const transportFileName = document.getElementById('transportFileName');
+const transportStatus = document.getElementById('transportStatus');
+const assignSlotsBtn = document.getElementById('assignSlotsBtn');
+const reshuffleSlotsBtn = document.getElementById('reshuffleSlotsBtn');
+const slotExcelBtn = document.getElementById('slotExcelBtn');
+const slotAttendanceBtn = document.getElementById('slotAttendanceBtn');
+const slotCapacityInput = document.getElementById('slotCapacity');
+function getSlotCapacity(){
+const v = parseInt(slotCapacityInput.value, 10);
+return (v > 0) ? v : 58;
+}
+const SLOT_DEFS = [
+{key:'slot1', label:'Slot 1', timing:'9:00 AM – 12:00 PM', full:'Slot 1 (9:00 AM – 12:00 PM)'},
+{key:'slot2', label:'Slot 2', timing:'12:15 PM – 3:15 PM', full:'Slot 2 (12:15 PM – 3:15 PM)'},
+{key:'slot3', label:'Slot 3', timing:'3:30 PM – 6:30 PM', full:'Slot 3 (3:30 PM – 6:30 PM)'}
+];
+function setTestType(type){
+testType = type;
+hallsSection.style.display = type === 'offline' ? '' : 'none';
+slotsSection.style.display = type === 'online' ? '' : 'none';
+transportUploadContainer.style.display = type === 'online' ? '' : 'none';
+offlineGenerateControls.style.display = type === 'offline' ? '' : 'none';
+onlineGenerateControls.style.display = type === 'online' ? '' : 'none';
+generateHint.textContent = type === 'offline'
+? 'Random shuffle · max 2 classes per hall'
+: 'Transport students fixed to Slot 1 · rest shuffled across Slots 2 & 3';
+results.innerHTML = '';
+lastResults = null;
+lastSlotResults = null;
+genStatus.className = 'status';
+genStatus.textContent = '';
+}
+document.getElementById('testTypeOffline').addEventListener('change', () => setTestType('offline'));
+document.getElementById('testTypeOnline').addEventListener('change', () => setTestType('online'));
+function addRoomRow(name, cap, used, pins){
+const row = document.createElement('div');
+row.className = 'room-row';
+row.innerHTML = `
+<div>
+<label>Hall No.</label>
+<input type="text" class="roomName" placeholder="e.g. Hall 101" value="${name||''}">
+</div>
+<div>
+<label>Capacity</label>
+<input type="number" class="roomCap" min="1" value="${cap||''}">
+</div>
+<div style="position:relative;">
+<label>Pin class/batch (optional, max 2)</label>
+<button type="button" class="pin-trigger">— Shuffle —</button>
+<div class="pin-panel"></div>
+</div>
+<div class="use-toggle">
+<input type="checkbox" class="roomUse" ${used === false ? '' : 'checked'}>
+<span>Use for this test</span>
+</div>
+<button class="remove-btn" type="button" title="Remove">&times;</button>
+`;
+row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateCapacitySummary(); updateSelectedSummary(); });
+const useBox = row.querySelector('.roomUse');
+useBox.addEventListener('change', () => { row.classList.toggle('disabled', !useBox.checked); updateSelectedSummary(); });
+row.querySelector('.roomCap').addEventListener('input', () => { updateCapacitySummary(); updateSelectedSummary(); });
+roomRows.appendChild(row);
+// row.pins: array of up to 2 entries, each {type:'class', name} to pin a
+// WHOLE class (its own sub-batches shuffled together, as before), or
+// {type:'batch', name} to pin just ONE specific sub-batch, leaving the
+// rest of that class to shuffle normally.
+row.pins = Array.isArray(pins) ? pins.slice(0, 2) : [];
+setupPinPanel(row);
+populatePinPanel(row);
+}
+function pinTriggerLabel(row){
+if (!row.pins.length) return '— Shuffle —';
+return row.pins.map(p => p.name).join(' + ');
+}
+function setupPinPanel(row){
+const trigger = row.querySelector('.pin-trigger');
+const panel = row.querySelector('.pin-panel');
+trigger.addEventListener('click', (e) => {
+e.stopPropagation();
+const isOpen = panel.style.display === 'block';
+document.querySelectorAll('.pin-panel').forEach(p => { p.style.display = 'none'; });
+panel.style.display = isOpen ? 'none' : 'block';
+});
+document.addEventListener('click', (e) => {
+if (!row.contains(e.target)) panel.style.display = 'none';
+});
+}
+function hasPin(row, type, name){
+return row.pins.some(p => p.type === type && p.name === name);
+}
+function togglePin(row, type, name, on){
+if (on){
+if (row.pins.length >= 2) return false;
+row.pins.push({type, name});
+} else {
+row.pins = row.pins.filter(p => !(p.type === type && p.name === name));
+}
+return true;
+}
+// Fills a hall's Pin panel with the classes (bold, like Step 2) and each
+// class's individual batches (indented) currently present in the
+// selected/ticked student list — pinning either the whole class or one
+// specific batch counts as one of the 2 available slots. Keeps any
+// still-valid selections from row.pins (used when restoring a saved
+// room list or after the Step 2 class selection changes).
+function populatePinPanel(row){
+const panel = row.querySelector('.pin-panel');
+const trigger = row.querySelector('.pin-trigger');
+const groups = {};
+students.forEach(s => {
+if (!groups[s.groupKey]) groups[s.groupKey] = new Set();
+groups[s.groupKey].add(s.batch);
+});
+const classNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+// Drop any pins that are no longer valid classes/batches.
+row.pins = row.pins.filter(p => {
+if (p.type === 'class') return classNames.includes(p.name);
+return classNames.some(c => groups[c].has(p.name));
+});
+panel.innerHTML = '';
+if (!classNames.length){
+panel.innerHTML = '<div style="padding:8px 4px;color:var(--slate);font-size:12.5px;">Upload a student list first.</div>';
+trigger.textContent = pinTriggerLabel(row);
+return;
+}
+classNames.forEach(c => {
+const batches = [...groups[c]].sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+const singleBatch = batches.length === 1 && batches[0] === c;
+const classLabel = document.createElement('label');
+classLabel.className = 'pin-option';
+classLabel.style.fontWeight = '700';
+const classCheckbox = document.createElement('input');
+classCheckbox.type = 'checkbox';
+classCheckbox.checked = hasPin(row, 'class', c);
+if (!classCheckbox.checked && batches.some(b => hasPin(row, 'batch', b))) classCheckbox.disabled = true;
+const classSpan = document.createElement('span');
+classSpan.textContent = c;
+classLabel.appendChild(classCheckbox);
+classLabel.appendChild(classSpan);
+panel.appendChild(classLabel);
+classCheckbox.addEventListener('change', () => {
+if (!togglePin(row, 'class', c, classCheckbox.checked)) { classCheckbox.checked = false; return; }
+trigger.textContent = pinTriggerLabel(row);
+populatePinPanel(row);
+panel.style.display = 'block';
+updateSelectedSummary();
+});
+if (!singleBatch){
+batches.forEach(b => {
+const bLabel = document.createElement('label');
+bLabel.className = 'pin-option';
+bLabel.style.paddingLeft = '22px';
+bLabel.style.color = 'var(--slate)';
+bLabel.style.fontSize = '12.5px';
+const bCheckbox = document.createElement('input');
+bCheckbox.type = 'checkbox';
+bCheckbox.checked = hasPin(row, 'batch', b);
+if (classCheckbox.checked) bCheckbox.disabled = true; // covered by the whole-class pin already
+const bSpan = document.createElement('span');
+bSpan.textContent = b;
+bLabel.appendChild(bCheckbox);
+bLabel.appendChild(bSpan);
+panel.appendChild(bLabel);
+bCheckbox.addEventListener('change', () => {
+if (!togglePin(row, 'batch', b, bCheckbox.checked)) { bCheckbox.checked = false; return; }
+trigger.textContent = pinTriggerLabel(row);
+populatePinPanel(row);
+panel.style.display = 'block';
+updateSelectedSummary();
+});
+});
+}
+});
+trigger.textContent = pinTriggerLabel(row);
+syncPinCheckboxStates(row);
+}
+function syncPinCheckboxStates(row){
+const atMax = row.pins.length >= 2;
+row.querySelectorAll('.pin-option input').forEach(cb => {
+if (!cb.checked && !cb.disabled) cb.disabled = atMax;
+});
+}
+function refreshAllPinSelects(){
+roomRows.querySelectorAll('.room-row').forEach(row => populatePinPanel(row));
+}
+addRoomRow('Room 1', '');
+addRoomBtn.addEventListener('click', () => addRoomRow());
+function updateSelectedSummary(){
+const el = document.getElementById('selectedSummary');
+const rows = Array.from(roomRows.querySelectorAll('.room-row'));
+const selectedRows = rows.filter(row => row.querySelector('.roomUse').checked
+&& (parseInt(row.querySelector('.roomCap').value, 10) || 0) > 0);
+const total = selectedRows.reduce((sum, row) =>
+sum + (parseInt(row.querySelector('.roomCap').value, 10) || 0), 0);
+if (!selectedRows.length){
+el.className = 'status';
+el.textContent = 'No halls ticked yet.';
+return;
+}
+let text = `Ticked: ${selectedRows.length} hall(s), total capacity ${total}.`;
+if (students.length){
+const diff = total - students.length;
+if (diff < 0){ el.className = 'status err'; text += ` Short by ${-diff} seat(s).`; }
+else if (diff > 0){ el.className = 'status ok'; text += ` ${diff} seat(s) spare.`; }
+else { el.className = 'status ok'; text += ` Exact match.`; }
+} else {
+el.className = 'status';
+}
+el.textContent = text;
+}
+function updateCapacitySummary(){
+const el = document.getElementById('capacitySummary');
+if (!students.length){ el.className = 'status'; el.textContent = ''; return; }
+const caps = Array.from(roomRows.querySelectorAll('.room-row'))
+.map(row => parseInt(row.querySelector('.roomCap').value, 10) || 0)
+.filter(c => c > 0)
+.sort((a,b) => b - a);
+if (!caps.length){
+el.className = 'status';
+el.textContent = `${students.length} students loaded. Add halls with capacities below to see how many you'll need.`;
+return;
+}
+let needed = 0, capSum = 0;
+for (const c of caps){
+if (capSum >= students.length) break;
+capSum += c; needed++;
+}
+if (capSum >= students.length){
+el.className = 'status ok';
+el.textContent = `${students.length} students loaded — needs ${needed} of your ${caps.length} defined hall(s) to seat everyone.`;
+} else {
+el.className = 'status err';
+el.textContent = `${students.length} students loaded — even all ${caps.length} defined halls (total capacity ${capSum}) fall short by ${students.length - capSum}.`;
+}
+}
+const saveRoomsBtn = document.getElementById('saveRoomsBtn');
+const loadRoomsBtn = document.getElementById('loadRoomsBtn');
+const loadRoomsInput = document.getElementById('loadRoomsInput');
+const roomStatus = document.getElementById('roomStatus');
+saveRoomsBtn.addEventListener('click', () => {
+const rows = roomRows.querySelectorAll('.room-row');
+const rooms = [];
+rows.forEach(row => {
+const name = row.querySelector('.roomName').value.trim();
+const cap = parseInt(row.querySelector('.roomCap').value, 10);
+const pins = (row.pins || []).slice(0, 2);
+if (name && cap > 0) rooms.push({name, capacity: cap, pins});
+});
+if (!rooms.length){
+roomStatus.className = 'status err';
+roomStatus.textContent = 'Add at least one hall with a name and capacity before saving.';
+return;
+}
+const blob = new Blob([JSON.stringify(rooms, null, 2)], {type:'application/json'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'classrooms.json';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+roomStatus.className = 'status ok';
+roomStatus.textContent = 'Saved classrooms.json — keep this file; load it next time instead of re-typing capacities.';
+});
+loadRoomsBtn.addEventListener('click', () => loadRoomsInput.click());
+loadRoomsInput.addEventListener('change', (e) => {
+const file = e.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = (evt) => {
+try {
+const rooms = JSON.parse(evt.target.result);
+if (!Array.isArray(rooms) || !rooms.length) throw new Error('File has no halls in it.');
+roomRows.innerHTML = '';
+rooms.forEach(r => {
+// Back-compat: older saved files used "pinnedClasses" (array of
+// class-name strings) or an even older single "pinnedClass" string.
+let pins;
+if (Array.isArray(r.pins)) pins = r.pins;
+else if (Array.isArray(r.pinnedClasses)) pins = r.pinnedClasses.map(name => ({type:'class', name}));
+else if (r.pinnedClass) pins = [{type:'class', name: r.pinnedClass}];
+else pins = [];
+addRoomRow(r.name, r.capacity, true, pins);
+});
+roomStatus.className = 'status ok';
+roomStatus.textContent = `Loaded ${rooms.length} hall(s). Tick which ones to use for this test.`;
+updateCapacitySummary();
+updateSelectedSummary();
+} catch (err){
+roomStatus.className = 'status err';
+roomStatus.textContent = 'Could not read that file: ' + err.message;
+}
+};
+reader.readAsText(file);
+loadRoomsInput.value = '';
+});
+// ---- Class / sub-batch chart -------------------------------------------
+// Maps each parent Class to the finer sub-batch names that fall under it.
+// The uploaded sheet's Class/Batch column may contain either the parent
+// Class name itself OR one of its sub-batch names — resolveClass() below
+// always resolves back to the parent Class, so halls are split by the
+// correct parent Class, and each parent Class's own quota in a hall is
+// then balanced evenly across ITS sub-batches (see balancedTake()).
+// Edit this table if the batch chart changes.
+const CLASS_SUBBATCHES = {
+"Insight": ["Insight"],
+"Explore CBSE": ["Explore 1", "Explore 2", "Explore UE", "Explore CC / TS"],
+"Explore ICSE": ["Explore ICSE"],
+"Explore 3": ["Explore 3"],
+"Equip CBSE": ["Equip 1", "Equip 2", "Equip UE", "Equip CC / TS"],
+"Equip ICSE": ["Equip ICSE"],
+"Equip 3": ["Equip 3"],
+"Aspire NM": ["Aspire NM Alpha", "Aspire NM Lambda", "Aspire NM Delta", "Aspire NM Pi"],
+"Aspire Med": ["Aspire Med Delta", "Aspire Med Lambda", "Aspire Med Pi", "Aspire Med O", "Aspire Med Omega", "Aspire Med UE", "Aspire Med CC / TS"],
+"Excel NM": ["Excel Nm Beta", "Excel Nm Delta", "Excel Nm Pi", "Excel Nm O"],
+"Excel Med": ["Excel Med Beta", "Excel Med Lambda", "Excel Med Pi"]
+};
+const SUBBATCH_TO_CLASS = {};
+Object.keys(CLASS_SUBBATCHES).forEach(clsName => {
+SUBBATCH_TO_CLASS[clsName.toLowerCase()] = clsName;
+CLASS_SUBBATCHES[clsName].forEach(sb => { SUBBATCH_TO_CLASS[sb.toLowerCase()] = clsName; });
+});
+// The Batch column is checked against the chart FIRST: a known,
+// standalone single-batch class (e.g. "Explore ICSE") must resolve to
+// itself even if the sheet's Class column groups it under a broader
+// label (e.g. "Explore"). Only when the batch value isn't a recognized
+// name do we fall back to the Class column (also resolved through the
+// chart in case IT is itself a listed sub-batch name).
+function resolveGroupKey(cls, batch){
+if (batch && SUBBATCH_TO_CLASS[batch.toLowerCase()]) return SUBBATCH_TO_CLASS[batch.toLowerCase()];
+if (cls) return SUBBATCH_TO_CLASS[cls.toLowerCase()] || cls;
+if (batch) return batch;
+return 'Unassigned';
+}
+// Batches whose name ends in "UE" (e.g. "Aspire NM UE", "Aspire Med UE")
+// belong to a different branch and should never appear in this tool.
+// Matches "UE" as the last whole word only, so it won't misfire on an
+// unrelated batch name that merely contains those letters.
+function isExcludedBatch(batchName){
+return /\bUE$/i.test(String(batchName||'').trim());
+}
+function findKey(headerRow, exactMatches, keywords, excludeKeywords){
+exactMatches = exactMatches || [];
+excludeKeywords = excludeKeywords || [];
+// 1) Exact header match first (case-insensitive, trimmed) — safest when
+// the sheet has many extra columns that might otherwise partially match.
+for (const key of headerRow){
+const k = String(key).toLowerCase().trim();
+if (exactMatches.includes(k)) return key;
+}
+// 2) Fall back to substring keyword match, skipping anything that also
+// contains an excluded word (e.g. skip "Class Name" when looking for
+// the student Name column).
+for (const key of headerRow){
+const k = String(key).toLowerCase();
+if (excludeKeywords.some(ex => k.includes(ex))) continue;
+if (keywords.some(kw => k.includes(kw))) return key;
+}
+return null;
+}
+// Parses one student-list file and resolves with its extracted student
+// records — each file gets its own header-row/column detection, since
+// different files (e.g. one per branch or class) may have slightly
+// different layouts.
+function parseStudentFile(file){
+return new Promise((resolve, reject) => {
+const reader = new FileReader();
+reader.onload = function(evt){
+try {
+const data = new Uint8Array(evt.target.result);
+const wb = XLSX.read(data, {type:'array'});
+const ws = wb.Sheets[wb.SheetNames[0]];
+// Read as raw rows first (no assumed header) so we can find the
+// actual header row even if there's a title row above it, e.g.
+// "Test Seating Plan 26-7-2026" in row 1 with the real headers
+// (Admission No, Name, Class, Batch...) in row 2.
+const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+if (!rawRows.length) throw new Error('The sheet appears to be empty.');
+let headerRowIdx = -1, headerRow = null;
+for (let i = 0; i < Math.min(10, rawRows.length); i++){
+const candidate = rawRows[i].map(c => String(c||''));
+const hasName = candidate.some(h => h.toLowerCase().includes('name') && !h.toLowerCase().includes('father'));
+const hasClassOrBatch = candidate.some(h => h.toLowerCase().includes('class') || h.toLowerCase().includes('batch'));
+if (hasName && hasClassOrBatch){ headerRowIdx = i; headerRow = candidate; break; }
+}
+if (headerRowIdx === -1){
+throw new Error('Could not find a header row with Name and Class/Batch columns in the first 10 rows.');
+}
+const rows = rawRows.slice(headerRowIdx + 1)
+.map(r => {
+const obj = {};
+headerRow.forEach((h, idx) => { obj[h] = r[idx] !== undefined ? r[idx] : ''; });
+return obj;
+})
+.filter(obj => Object.values(obj).some(v => String(v).trim() !== ''));
+if (!rows.length) throw new Error('No student rows found below the header row.');
+// Only these 5 fields are ever pulled out — any other columns in the
+// sheet (phone, address, school, remarks, etc.) are simply ignored.
+const nameKey = findKey(headerRow, ['name', 'student name', 'full name'], ['name'], ['father', 'class', 'batch']);
+const rollKey = findKey(headerRow, ['admission no', 'admission no.', 'admission number', 'roll no', 'roll no.', 'roll number'], ['admission', 'admn', 'roll']);
+const clsKey = findKey(headerRow, ['class'], ['class'], ['teacher']);
+const batchKey = findKey(headerRow, ['batch'], ['batch']);
+const fatherKey = findKey(headerRow, ["father's name", 'father name', 'father'], ['father']);
+if (!nameKey || (!clsKey && !batchKey)){
+throw new Error('Could not find required columns (Name and Class/Batch). Check your file headers.');
+}
+const parsed = rows.map(r => {
+const cls = clsKey ? String(r[clsKey]||'').trim() : '';
+const batch = batchKey ? String(r[batchKey]||'').trim() : '';
+return {
+name: String(r[nameKey]||'').trim(),
+roll: rollKey ? String(r[rollKey]||'').trim() : '',
+cls: cls,
+batch: batch || 'Unassigned',
+// groupKey is what a hall is split by: the parent Class (e.g.
+// "Aspire NM"), resolved by checking BOTH the Class and Batch
+// column values against CLASS_SUBBATCHES — falls back to the raw
+// Class/Batch value if neither is a known name.
+groupKey: resolveGroupKey(cls, batch),
+father: fatherKey ? String(r[fatherKey]||'').trim() : ''
+};
+}).filter(s => s.name);
+resolve({fileName: file.name, students: parsed});
+} catch (err){
+reject({fileName: file.name, message: err.message});
+}
+};
+reader.onerror = () => reject({fileName: file.name, message: 'Could not read the file.'});
+reader.readAsArrayBuffer(file);
+});
+}
+fileInput.addEventListener('change', async (e) => {
+const files = Array.from(e.target.files || []);
+if (!files.length) return;
+fileName.textContent = files.length === 1 ? files[0].name : `${files.length} files: ${files.map(f => f.name).join(', ')}`;
+uploadStatus.className = 'status';
+uploadStatus.textContent = 'Reading file(s)…';
+const results = await Promise.allSettled(files.map(f => parseStudentFile(f)));
+const succeeded = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+const failed = results.filter(r => r.status === 'rejected').map(r => r.reason);
+if (!succeeded.length){
+uploadStatus.className = 'status err';
+uploadStatus.textContent = 'Could not read the selected file(s): ' + failed.map(f => `${f.fileName} (${f.message})`).join('; ');
+allStudentsRaw = []; batchList = []; selectedBatches = new Set(); students = [];
+updateCapacitySummary();
+updateSelectedSummary();
+batchTable.style.display = 'none';
+classSelectActions.style.display = 'none';
+classSelectStatus.textContent = '';
+return;
+}
+allStudentsRaw = succeeded.flatMap(r => r.students);
+// Batches from a different branch (their names end in "UE", e.g.
+// "Aspire NM UE", "Aspire Med UE") never belong in this tool — they're
+// dropped right here, before they ever reach the class list or
+// selection checkboxes below. Edit/remove isExcludedBatch() if this
+// rule ever changes.
+const excludedCounts = {};
+allStudentsRaw = allStudentsRaw.filter(s => {
+if (!isExcludedBatch(s.batch)) return true;
+excludedCounts[s.batch] = (excludedCounts[s.batch]||0) + 1;
+return false;
+});
+// Group by Class; within each class, keep a breakdown of its batches
+// (e.g. Plus Two -> NMPI, Delta, Beta, Gamma) purely for display —
+// allocation always mixes every batch inside a class together.
+const groups = {};
+allStudentsRaw.forEach(s => {
+if (!groups[s.groupKey]) groups[s.groupKey] = {count:0, batches:{}};
+groups[s.groupKey].count++;
+groups[s.groupKey].batches[s.batch] = (groups[s.groupKey].batches[s.batch]||0) + 1;
+});
+batchList = Object.keys(groups).map(g => ({
+name: g,
+count: groups[g].count,
+batches: Object.keys(groups[g].batches)
+.map(b => ({name:b, count:groups[g].batches[b]}))
+.sort((a,b) => b.count - a.count)
+})).sort((a,b) => b.count - a.count);
+// Build the class/batch-selection checklist. Everything starts ticked
+// (matches the "Use for this test" default on halls) — the person
+// unticks whichever classes/batches aren't part of THIS test, down to
+// individual batch level (e.g. keep "Excel NM Pi" but drop "Excel NM Omega").
+selectedBatches = new Set();
+batchList.forEach(g => g.batches.forEach(b => selectedBatches.add(b.name)));
+renderClassSelectionTable();
+batchTable.style.display = 'table';
+classSelectActions.style.display = 'flex';
+uploadStatus.className = failed.length ? 'status err' : 'status ok';
+const perFile = succeeded.map(r => `${r.fileName}: ${r.students.length}`).join(' · ');
+let msg = `Loaded ${allStudentsRaw.length} students from ${succeeded.length} file${succeeded.length===1?'':'s'} across ${batchList.length} class(es).`;
+if (failed.length) msg += ` ${failed.length} file(s) failed: ${failed.map(f => `${f.fileName} (${f.message})`).join('; ')}.`;
+const excludedTotal = Object.values(excludedCounts).reduce((a,b) => a+b, 0);
+if (excludedTotal){
+const excludedSummary = Object.keys(excludedCounts).map(b => `${b}: ${excludedCounts[b]}`).join(', ');
+msg += ` ${excludedTotal} student(s) from a different branch were excluded automatically (${excludedSummary}).`;
+}
+uploadStatus.innerHTML = `${msg}<div style="color:var(--slate);font-size:11.5px;margin-top:4px;">Per file: ${perFile}</div>`;
+recomputeSelectedStudents();
+});
+// Rebuilds the checkbox table from the current batchList + selectedBatches.
+// Called after upload and after Select all / Select none, so the checked
+// state always reflects selectedBatches (the single source of truth).
+function renderClassSelectionTable(){
+const tbody = batchTable.querySelector('tbody');
+tbody.innerHTML = '';
+batchList.forEach(g => {
+const singleBatch = g.batches.length === 1 && g.batches[0].name === g.name;
+const batchCheckboxes = [];
+const trClass = document.createElement('tr');
+trClass.className = 'class-row';
+const checkTd = document.createElement('td');
+const classCheckbox = document.createElement('input');
+classCheckbox.type = 'checkbox';
+checkTd.appendChild(classCheckbox);
+const nameTd = document.createElement('td');
+const strong = document.createElement('strong');
+strong.textContent = g.name;
+nameTd.appendChild(strong);
+const countTd = document.createElement('td');
+countTd.innerHTML = `<span class="badge">${g.count}</span>`;
+trClass.appendChild(checkTd);
+trClass.appendChild(nameTd);
+trClass.appendChild(countTd);
+tbody.appendChild(trClass);
+function syncClassCheckbox(){
+if (singleBatch) return;
+const total = batchCheckboxes.length;
+const checkedCount = batchCheckboxes.filter(bc => bc.el.checked).length;
+classCheckbox.checked = checkedCount === total;
+classCheckbox.indeterminate = checkedCount > 0 && checkedCount < total;
+}
+if (singleBatch){
+classCheckbox.checked = selectedBatches.has(g.name);
+} else {
+g.batches.forEach(b => {
+const trBatch = document.createElement('tr');
+trBatch.className = 'batch-row';
+const bCheckTd = document.createElement('td');
+const bCheckbox = document.createElement('input');
+bCheckbox.type = 'checkbox';
+bCheckbox.checked = selectedBatches.has(b.name);
+bCheckTd.appendChild(bCheckbox);
+const bNameTd = document.createElement('td');
+bNameTd.style.paddingLeft = '26px';
+bNameTd.style.color = 'var(--slate)';
+bNameTd.style.fontSize = '13px';
+bNameTd.textContent = b.name;
+const bCountTd = document.createElement('td');
+bCountTd.innerHTML = `<span class="mini-badge">${b.count}</span>`;
+trBatch.appendChild(bCheckTd);
+trBatch.appendChild(bNameTd);
+trBatch.appendChild(bCountTd);
+tbody.appendChild(trBatch);
+batchCheckboxes.push({name: b.name, el: bCheckbox});
+bCheckbox.addEventListener('change', () => {
+if (bCheckbox.checked) selectedBatches.add(b.name);
+else selectedBatches.delete(b.name);
+syncClassCheckbox();
+recomputeSelectedStudents();
+});
+});
+syncClassCheckbox();
+}
+classCheckbox.addEventListener('change', () => {
+if (singleBatch){
+if (classCheckbox.checked) selectedBatches.add(g.name);
+else selectedBatches.delete(g.name);
+} else {
+batchCheckboxes.forEach(bc => {
+bc.el.checked = classCheckbox.checked;
+if (classCheckbox.checked) selectedBatches.add(bc.name);
+else selectedBatches.delete(bc.name);
+});
+classCheckbox.indeterminate = false;
+}
+recomputeSelectedStudents();
+});
+});
+}
+function recomputeSelectedStudents(){
+students = allStudentsRaw.filter(s => selectedBatches.has(s.batch));
+updateCapacitySummary();
+updateSelectedSummary();
+updateClassSelectStatus();
+refreshAllPinSelects();
+}
+function updateClassSelectStatus(){
+if (!batchList.length){ classSelectStatus.textContent = ''; classSelectStatus.className = 'status'; return; }
+const totalBatches = batchList.reduce((sum, g) => sum + g.batches.length, 0);
+classSelectStatus.className = students.length ? 'status ok' : 'status err';
+classSelectStatus.textContent = `${selectedBatches.size} of ${totalBatches} batch(es) selected — ${students.length} student(s) in this test.`;
+}
+selectAllClassesBtn.addEventListener('click', () => {
+selectedBatches = new Set();
+batchList.forEach(g => g.batches.forEach(b => selectedBatches.add(b.name)));
+renderClassSelectionTable();
+recomputeSelectedStudents();
+});
+selectNoneClassesBtn.addEventListener('click', () => {
+selectedBatches = new Set();
+renderClassSelectionTable();
+recomputeSelectedStudents();
+});
+transportFileInput.addEventListener('change', (e) => {
+const file = e.target.files[0];
+if (!file) return;
+transportFileName.textContent = file.name;
+transportStatus.textContent = '';
+transportStatus.className = 'status';
+const reader = new FileReader();
+reader.onload = function(evt){
+try {
+const data = new Uint8Array(evt.target.result);
+const wb = XLSX.read(data, {type:'array'});
+const ws = wb.Sheets[wb.SheetNames[0]];
+const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+if (!rawRows.length) throw new Error('The sheet appears to be empty.');
+let headerRowIdx = -1, headerRow = null;
+for (let i = 0; i < Math.min(10, rawRows.length); i++){
+const candidate = rawRows[i].map(c => String(c||''));
+const hasName = candidate.some(h => h.toLowerCase().includes('name') && !h.toLowerCase().includes('father'));
+if (hasName){ headerRowIdx = i; headerRow = candidate; break; }
+}
+if (headerRowIdx === -1){
+throw new Error('Could not find a header row with a Name column in the first 10 rows.');
+}
+const rows = rawRows.slice(headerRowIdx + 1)
+.map(r => {
+const obj = {};
+headerRow.forEach((h, idx) => { obj[h] = r[idx] !== undefined ? r[idx] : ''; });
+return obj;
+})
+.filter(obj => Object.values(obj).some(v => String(v).trim() !== ''));
+if (!rows.length) throw new Error('No rows found below the header row.');
+const nameKey = findKey(headerRow, ['name', 'student name', 'full name'], ['name'], ['father', 'class', 'batch']);
+const rollKey = findKey(headerRow, ['admission no', 'admission no.', 'admission number', 'roll no', 'roll no.', 'roll number'], ['admission', 'admn', 'roll']);
+const clsKey = findKey(headerRow, ['class'], ['class'], ['teacher']);
+const batchKey = findKey(headerRow, ['batch'], ['batch']);
+if (!nameKey) throw new Error('Could not find a Name column. Check your file headers.');
+transportRaw = rows.map(r => {
+const cls = clsKey ? String(r[clsKey]||'').trim() : '';
+const batchVal = batchKey ? String(r[batchKey]||'').trim() : '';
+// If the transport sheet carries its own Class/Batch column, resolve it
+// to the parent class (same logic as the main upload) so we can later
+// check whether that WHOLE class is even ticked in Step 2 — if it
+// isn't, those rows are dropped silently instead of being flagged as
+// errors (e.g. a batch that tests on a different/alternate schedule).
+const groupKey = (cls || batchVal) ? resolveGroupKey(cls, batchVal) : null;
+return {
+name: String(r[nameKey]||'').trim(),
+roll: rollKey ? String(r[rollKey]||'').trim() : '',
+groupKey
+};
+}).filter(t => t.name);
+transportStatus.className = 'status ok';
+const usedCols = [
+`Name → "${nameKey}"`,
+rollKey ? `Admission No. → "${rollKey}"` : null,
+clsKey ? `Class → "${clsKey}"` : null,
+batchKey ? `Batch → "${batchKey}"` : null
+].filter(Boolean).join(' · ');
+const batchNote = (clsKey || batchKey)
+? ' Rows whose whole class isn\'t ticked in Step 2 will be skipped automatically.'
+: '';
+transportStatus.innerHTML = `Loaded ${transportRaw.length} transport student(s). They'll be matched by admission no. (or name if admission no. is missing) and fixed to Slot 1.${batchNote}<div style="color:var(--slate);font-size:11.5px;margin-top:4px;">Columns used (rest of the sheet is ignored): ${usedCols}</div>`;
+} catch (err){
+transportStatus.className = 'status err';
+transportStatus.textContent = 'Error reading file: ' + err.message;
+transportRaw = [];
+}
+};
+reader.readAsArrayBuffer(file);
+});
+function shuffle(arr){
+const a = arr.slice();
+for (let i = a.length - 1; i > 0; i--){
+const j = Math.floor(Math.random() * (i+1));
+[a[i], a[j]] = [a[j], a[i]];
+}
+return a;
+}
+// Takes `count` students out of `students` (mutates it, like .splice),
+// spreading the picks evenly across the class's own sub-batches
+// (student.batch) round-robin style, instead of taking one sub-batch
+// whole before moving to the next. This mixes a multi-batch class (e.g.
+// Excel Med's Beta/Lambda/Pi) within EACH hall it's assigned to, so a
+// hall never ends up dominated by students from a single batch/section
+// who already know each other — reducing the chance of copying.
+// (A class that only has one batch to begin with — e.g. "Explore ICSE"
+// — is unaffected: resolveGroupKey() already keeps it as its own class,
+// so it naturally lands in as few halls as its size needs, without any
+// mixing decision to make here.)
+function balancedTake(students, count){
+if (count <= 0) return [];
+const groups = {};
+students.forEach(s => { (groups[s.batch] = groups[s.batch] || []).push(s); });
+const keys = Object.keys(groups);
+keys.forEach(k => { groups[k] = shuffle(groups[k]); });
+const taken = [];
+let progress = true;
+while (taken.length < count && progress){
+progress = false;
+for (const k of keys){
+if (taken.length >= count) break;
+if (groups[k].length){ taken.push(groups[k].pop()); progress = true; }
+}
+}
+const takenSet = new Set(taken);
+for (let i = students.length - 1; i >= 0; i--){
+if (takenSet.has(students[i])) students.splice(i, 1);
+}
+return shuffle(taken);
+}
+function getRooms(){
+const rows = roomRows.querySelectorAll('.room-row');
+const out = [];
+rows.forEach(row => {
+const used = row.querySelector('.roomUse').checked;
+if (!used) return;
+const name = row.querySelector('.roomName').value.trim();
+const cap = parseInt(row.querySelector('.roomCap').value, 10);
+const pins = (row.pins || []).slice(0, 2);
+if (name && cap > 0) out.push({name, capacity: cap, pins});
+});
+return out;
+}
+function bestPairForRoom(active, capacity){
+// Exhaustively check every ordered pair of groups and pick whichever
+// pair keeps the split CLOSEST to a balanced 50/50 (ceil/floor) — i.e.
+// the pair that needs the least "unbalanced" top-up to fill the room —
+// breaking ties by whichever fills the most seats. This avoids pairing
+// a large class with an almost-exhausted one just because the combined
+// total happens to reach capacity; that would force nearly the whole
+// room to come from one side.
+const targetA = Math.ceil(capacity / 2);
+const targetB = capacity - targetA;
+let best = null;
+for (let i = 0; i < active.length; i++){
+for (let j = i + 1; j < active.length; j++){
+const pairs = [[active[i], active[j]], [active[j], active[i]]];
+for (const [a, b] of pairs){
+const takeA = Math.min(targetA, a.students.length);
+const takeB = Math.min(targetB, b.students.length);
+const shortfall = capacity - takeA - takeB;
+const filled = takeA + takeB;
+if (best === null || shortfall < best.shortfall || (shortfall === best.shortfall && filled > best.filled)){
+best = {a, b, shortfall, filled};
+}
+}
+}
+}
+return best;
+}
+function allocate(rooms){
+// Build shuffled per-CLASS queues. The 2-per-hall limit applies to the
+// Class (e.g. "Excel Medical", "Explore CBSE") — not the raw Batch —
+// so a class's own sub-batches (Pi/Delta/Beta, Explore-1/Explore-2)
+// always get shuffled together as one side of a hall, never split off
+// into a hall on their own.
+const groups = {};
+students.forEach(s => {
+if (!groups[s.groupKey]) groups[s.groupKey] = [];
+groups[s.groupKey].push(s);
+});
+const pool = Object.keys(groups).map(name => ({
+name,
+students: shuffle(groups[name])
+}));
+const roomResultsByIndex = new Array(rooms.length);
+function buildRoomResult(room, seatEntries, batchesUsed, pinned){
+const batchCounts = {};
+const classCounts = {};
+seatEntries.forEach(e => {
+batchCounts[e.student.batch] = (batchCounts[e.student.batch]||0) + 1;
+classCounts[e.student.groupKey] = (classCounts[e.student.groupKey]||0) + 1;
+});
+const batchBreakdown = Object.keys(batchCounts)
+.map(b => ({name:b, count:batchCounts[b]}))
+.sort((a,b) => b.count - a.count);
+const classBreakdown = Object.keys(classCounts)
+.map(c => ({name:c, count:classCounts[c]}))
+.sort((a,b) => b.count - a.count);
+return {
+room, batches: batchesUsed, batchBreakdown, classBreakdown, seatEntries,
+used: seatEntries.length, overflowed: false, pinned: !!pinned
+};
+}
+// Pinned halls first: a hall with 1 or 2 "pins" set (Step 3) — each pin
+// is either a WHOLE class or one specific BATCH within a class — is
+// reserved EXCLUSIVELY for those students, up to the hall's capacity —
+// it never mixes with any OTHER class/batch, and it's excluded from
+// every pass below (pairing, mop-up, catch-all, exhaustive-fill). With
+// 2 pins, seats split evenly (ceil/floor) between them, same as the
+// normal auto-pairing logic. If a pin has fewer students than its
+// share, the remaining seats are left empty on purpose (the hall stays
+// reserved, not backfilled with someone else).
+function pinAvailable(pin){
+if (!pin) return 0;
+if (pin.type === 'class'){
+const group = pool.find(g => g.name === pin.name);
+return group ? group.students.length : 0;
+}
+let total = 0;
+pool.forEach(g => { total += g.students.filter(s => s.batch === pin.name).length; });
+return total;
+}
+function pinTake(pin, count){
+if (!pin || count <= 0) return [];
+if (pin.type === 'class'){
+const group = pool.find(g => g.name === pin.name);
+return group ? balancedTake(group.students, count) : [];
+}
+// Batch-level pin: pull only that specific batch's students out of
+// whichever class group holds them, leaving the rest of that class
+// (its other batches) untouched for the normal shuffle passes.
+for (const group of pool){
+const matching = group.students.filter(s => s.batch === pin.name);
+if (!matching.length) continue;
+const shuffledMatching = shuffle(matching).slice(0, count);
+const takenSet = new Set(shuffledMatching);
+for (let i = group.students.length - 1; i >= 0; i--){
+if (takenSet.has(group.students[i])) group.students.splice(i, 1);
+}
+return shuffledMatching;
+}
+return [];
+}
+const pinnedIndices = new Set();
+rooms.forEach((room, roomIdx) => {
+const pins = (room.pins || []).filter(Boolean).slice(0, 2);
+if (!pins.length) return;
+const capacity = room.capacity;
+const seatEntries = [];
+const batchesUsed = [];
+if (pins.length === 1){
+const take = Math.min(capacity, pinAvailable(pins[0]));
+const taken = pinTake(pins[0], take);
+taken.forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (take > 0) batchesUsed.push(pins[0].name);
+} else {
+const takeA = Math.min(Math.ceil(capacity/2), pinAvailable(pins[0]));
+const takeB = Math.min(capacity - Math.ceil(capacity/2), pinAvailable(pins[1]));
+const takenA = pinTake(pins[0], takeA);
+const takenB = pinTake(pins[1], takeB);
+shuffle(takenA.concat(takenB)).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (takeA > 0) batchesUsed.push(pins[0].name);
+if (takeB > 0) batchesUsed.push(pins[1].name);
+}
+roomResultsByIndex[roomIdx] = buildRoomResult(room, seatEntries, batchesUsed, true);
+pinnedIndices.add(roomIdx);
+});
+// Fill the BIGGEST remaining (non-pinned) halls first. A big hall needs
+// a big, even chunk from each of its 2 classes (e.g. 38/37 for a
+// 75-seat hall) — if a large class has already been thinned out by
+// smaller halls before we get to it, the big hall is left pairing with
+// whatever small leftover class remains, forcing a lopsided split.
+// Processing capacity-descending keeps both sides of a large hall's
+// split available while there's still plenty of every class to draw
+// from; smaller halls (which need smaller, easier-to-satisfy chunks)
+// are filled afterwards from whatever's left. The results are restored
+// to the hall's original list order before being shown.
+const processingOrder = rooms
+.map((room, idx) => idx)
+.filter(idx => !pinnedIndices.has(idx))
+.sort((i, j) => rooms[j].capacity - rooms[i].capacity);
+processingOrder.forEach(roomIdx => {
+const room = rooms[roomIdx];
+const capacity = room.capacity;
+const seatEntries = []; // {student, seatInRow}
+const batchesUsed = [];
+const active = pool.filter(b => b.students.length > 0);
+if (active.length >= 2){
+const best = bestPairForRoom(active, capacity);
+const classA = best.a, classB = best.b;
+// Each side is capped at its own target (ceil/floor of capacity) — if a
+// class doesn't have enough students to fill its half, that shortfall
+// is left as EMPTY seats in this hall rather than pulled from the
+// other paired class. This keeps the split honest to actual batch
+// sizes (e.g. a 30-seat half with only 26 students in that batch stays
+// at 26/30, not topped up to 30 from the other class).
+const takeA = Math.min(Math.ceil(capacity/2), classA.students.length);
+const takeB = Math.min(capacity - Math.ceil(capacity/2), classB.students.length);
+const takenA = balancedTake(classA.students, takeA);
+const takenB = balancedTake(classB.students, takeB);
+shuffle(takenA.concat(takenB)).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (takeA > 0) batchesUsed.push(classA.name);
+if (takeB > 0) batchesUsed.push(classB.name);
+} else if (active.length === 1){
+const classA = active[0];
+const take = Math.min(capacity, classA.students.length);
+balancedTake(classA.students, take).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (take > 0) batchesUsed.push(classA.name);
+}
+roomResultsByIndex[roomIdx] = buildRoomResult(room, seatEntries, batchesUsed, false);
+});
+const roomResults = roomResultsByIndex;
+function addExtra(r, student, isOverflow){
+r.seatEntries.push({student, seatInRow: null});
+if (!r.batches.includes(student.groupKey)) r.batches.push(student.groupKey);
+const existing = r.batchBreakdown.find(b => b.name === student.batch);
+if (existing) existing.count += 1;
+else r.batchBreakdown.push({name: student.batch, count: 1});
+r.batchBreakdown.sort((a,b) => b.count - a.count);
+const existingCls = r.classBreakdown.find(c => c.name === student.groupKey);
+if (existingCls) existingCls.count += 1;
+else r.classBreakdown.push({name: student.groupKey, count: 1});
+r.classBreakdown.sort((a,b) => b.count - a.count);
+r.used += 1;
+if (isOverflow) r.overflowed = true;
+}
+// Mop-up pass: a hall that ended up with FEWER than 2 classes (the main
+// pass simply couldn't find a second active class at the time) still
+// has spare capacity — top it up to a 2nd class if one's available.
+// This does NOT touch halls that already got their honest 2 classes
+// (a shortfall there, e.g. a small 23/26-student class, is left as
+// empty seats on purpose, not patched with a 3rd class), and never
+// touches a pinned hall.
+for (const r of roomResults){
+if (r.pinned) continue;
+let spare = r.room.capacity - r.used;
+while (spare > 0 && r.batches.length < 2){
+const candidates = pool.filter(b => b.students.length > 0 && !r.batches.includes(b.name));
+if (!candidates.length) break;
+candidates.sort((a,b) => b.students.length - a.students.length);
+const chosen = candidates[0];
+const take = Math.min(spare, chosen.students.length);
+const taken = balancedTake(chosen.students, take);
+taken.forEach(st => addExtra(r, st, false));
+spare -= take;
+}
+}
+// Last resort: after that, some students can still be left over. Only
+// ONE designated hall — the smallest non-pinned hall, processed last —
+// acts as a catch-all for them, briefly going past the 2-class limit if
+// it has to, so the "too many classes in one room" problem stays
+// confined to a single, clearly-flagged hall instead of spreading
+// across every hall that happened to have a small-class shortfall gap.
+// Pinned halls are never used as the catch-all.
+const lastHallIdx = processingOrder[processingOrder.length - 1];
+const catchAllRoom = lastHallIdx !== undefined ? roomResultsByIndex[lastHallIdx] : null;
+if (catchAllRoom){
+let spare = catchAllRoom.room.capacity - catchAllRoom.used;
+while (spare > 0){
+// Prefer a class NOT already in this hall — piling more of a class
+// that's already here defeats the "hard to copy" point of mixing
+// classes in the first place. Only reuse an existing class here if
+// truly nothing else is left.
+let candidates = pool.filter(b => b.students.length > 0 && !catchAllRoom.batches.includes(b.name));
+if (!candidates.length) candidates = pool.filter(b => b.students.length > 0);
+if (!candidates.length) break;
+candidates.sort((a,b) => b.students.length - a.students.length);
+const chosen = candidates[0];
+const take = Math.min(spare, chosen.students.length);
+const taken = balancedTake(chosen.students, take);
+taken.forEach(st => addExtra(catchAllRoom, st, true));
+spare -= take;
+}
+}
+// Final exhaustive pass: if students are STILL left over after the single
+// catch-all hall (e.g. that hall itself ran out of room), spread them
+// across ANY non-pinned hall that still has spare capacity anywhere —
+// even past the 2-class cap — rather than reporting a shortfall when
+// seats genuinely exist elsewhere. Pinned halls are never touched, even
+// here, so a class you've deliberately isolated stays isolated. Halls
+// that DON'T already contain this class are tried first, so a class
+// never silently piles up past its intended share in one room; only if
+// every hall with spare capacity already has this class do we top one
+// of them up. Only students who truly have nowhere to fit remain as
+// leftover after this.
+const stillLeftoverGroups = pool.filter(b => b.students.length > 0);
+stillLeftoverGroups.forEach(b => {
+while (b.students.length > 0){
+let roomsBySpare = roomResults
+.filter(r => !r.pinned && !r.batches.includes(b.name))
+.map(r => ({r, spare: r.room.capacity - r.used}))
+.filter(x => x.spare > 0)
+.sort((x, y) => y.spare - x.spare);
+if (!roomsBySpare.length){
+roomsBySpare = roomResults
+.filter(r => !r.pinned)
+.map(r => ({r, spare: r.room.capacity - r.used}))
+.filter(x => x.spare > 0)
+.sort((x, y) => y.spare - x.spare);
+}
+if (!roomsBySpare.length) break;
+const {r, spare} = roomsBySpare[0];
+const take = Math.min(spare, b.students.length);
+const taken = balancedTake(b.students, take);
+taken.forEach(st => addExtra(r, st, true));
+}
+});
+const leftover = pool.filter(b => b.students.length > 0)
+.map(b => ({batch: b.name, count: b.students.length}));
+return {roomResults, leftover};
+}
+function renderResults(data){
+const {roomResults, leftover} = data;
+document.getElementById('printInst').textContent = document.getElementById('instName').value || 'Institute';
+const examTitle = document.getElementById('examTitle').value;
+const examDate = document.getElementById('examDate').value;
+document.getElementById('printExam').textContent =
+[examTitle, examDate].filter(Boolean).join(' · ');
+let html = '';
+if (leftover.length){
+html += `<div class="leftover no-print"><strong>Warning:</strong> total hall capacity is short.
+Not seated: ${leftover.map(l => `${l.batch} (${l.count})`).join(', ')}.
+Add more capacity or another hall.</div>`;
+}
+roomResults.forEach(r => {
+html += `<div class="room-card">
+<h3>${r.room.name}${r.pinned ? ' <span class="badge" style="background:var(--maroon);font-size:10px;vertical-align:middle;">PINNED</span>' : ''}</h3>
+<div class="meta">Capacity ${r.room.capacity} &nbsp;·&nbsp; Seated ${r.used}</div>
+<div class="batches">${r.batches.map(b => {
+const clsTotal = r.classBreakdown.find(c => c.name === b);
+return `<span class="badge">${b}: ${clsTotal ? clsTotal.count : 0}</span>`;
+}).join('')}</div>
+<div class="batch-breakdown">${r.batchBreakdown.map(b => `<span class="mini-badge">${b.name}: ${b.count}</span>`).join('')}</div>
+${r.overflowed ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
+<table class="data">
+<thead><tr><th>Seat</th><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
+<tbody>
+${r.seatEntries.map(e => `<tr>
+<td>${e.seatInRow === null ? '-' : e.seatInRow}</td>
+<td>${e.student.name}</td><td>${e.student.roll}</td><td>${e.student.cls}</td><td>${e.student.batch}</td><td>${e.student.father}</td>
+</tr>`).join('')}
+</tbody>
+</table>
+</div>`;
+});
+results.innerHTML = html;
+}
+function runGeneration(){
+genStatus.className = 'status';
+if (!students.length){
+genStatus.className = 'status err';
+genStatus.textContent = 'Please upload a student list first.';
+return;
+}
+const rooms = getRooms();
+if (!rooms.length){
+genStatus.className = 'status err';
+genStatus.textContent = 'Please add at least one hall with a capacity.';
+return;
+}
+lastResults = allocate(rooms);
+renderResults(lastResults);
+reshuffleBtn.style.display = 'inline-block';
+printBtn.style.display = 'inline-block';
+excelBtn.style.display = 'inline-block';
+attendanceBtn.style.display = 'inline-block';
+genStatus.className = 'status ok';
+genStatus.textContent = 'Seating plan generated.';
+}
+const THIN_BORDER = {top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+const HEADER_FILL = {type:'pattern', pattern:'solid', fgColor:{argb:'FF1B2A4A'}};
+const HALL_FILL = {type:'pattern', pattern:'solid', fgColor:{argb:'FFE7D6B2'}};
+const TRANSPORT_FILL = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFDECC8'}};
+function styleHeaderRow(row){
+row.eachCell(cell => {
+cell.font = {bold:true, color:{argb:'FFFFFFFF'}};
+cell.fill = HEADER_FILL;
+cell.alignment = {horizontal:'center', vertical:'middle'};
+cell.border = THIN_BORDER;
+});
+}
+function buildSeatingSheet(wb, roomResults){
+const ws = wb.addWorksheet('Seating Plan');
+ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:14}];
+addTitleBanner(ws, 'Test Seating Plan', 6);
+const flat = [];
+roomResults.forEach(r => {
+r.seatEntries.forEach(e => flat.push({student: e.student, hall: r.room.name}));
+});
+// Single continuous table sorted by Batch then Name across ALL halls —
+// no per-hall grouping — so a student can find their own name under
+// their batch on a printed/pinned notice without hunting hall by hall.
+const sorted = flat.slice().sort((a, b) => {
+const batchCompare = (a.student.batch||'').localeCompare(b.student.batch||'', undefined, {sensitivity:'base'});
+if (batchCompare !== 0) return batchCompare;
+return (a.student.name||'').localeCompare(b.student.name||'', undefined, {sensitivity:'base'});
+});
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Hall No.']);
+styleHeaderRow(headRow);
+sorted.forEach(f => {
+const row = ws.addRow([
+f.student.roll,
+f.student.name,
+f.student.father,
+f.student.cls,
+f.student.batch,
+f.hall
+]);
+row.eachCell((cell, colNumber) => {
+cell.border = THIN_BORDER;
+cell.alignment = (colNumber === 2 || colNumber === 3)
+? {horizontal:'left', vertical:'middle'}
+: {horizontal:'center', vertical:'middle'};
+});
+});
+ws.views = [{state:'frozen', ySplit:0}];
+return ws;
+}
+function buildSummarySheet(wb, roomResults, leftover){
+const ws = wb.addWorksheet('Summary');
+ws.columns = [{width:18},{width:12},{width:12},{width:22},{width:14}];
+const headRow = ws.addRow(['Hall', 'Capacity', 'Seated', 'Class', 'Class Total']);
+styleHeaderRow(headRow);
+roomResults.forEach(r => {
+const startRow = ws.rowCount + 1;
+if (!r.classBreakdown.length){
+const row = ws.addRow([r.room.name, r.room.capacity, r.used, '', '']);
+row.eachCell(cell => { cell.border = THIN_BORDER; cell.alignment = {horizontal:'center', vertical:'middle'}; });
+} else {
+r.classBreakdown.forEach((c, i) => {
+const row = ws.addRow([i === 0 ? r.room.name : '', i === 0 ? r.room.capacity : '', i === 0 ? r.used : '', c.name, c.count]);
+row.eachCell(cell => { cell.border = THIN_BORDER; cell.alignment = {horizontal:'center', vertical:'middle'}; });
+});
+const endRow = ws.rowCount;
+if (endRow > startRow){
+[1, 2, 3].forEach(col => {
+ws.mergeCells(startRow, col, endRow, col);
+ws.getCell(startRow, col).alignment = {horizontal:'center', vertical:'middle'};
+});
+}
+}
+});
+if (leftover.length){
+ws.addRow([]);
+const noteRow = ws.addRow(['Not Seated (short of hall capacity)']);
+ws.mergeCells(noteRow.number, 1, noteRow.number, 5);
+noteRow.getCell(1).font = {bold:true, color:{argb:'FFA9402F'}};
+const subHead = ws.addRow(['Class', 'Count']);
+subHead.getCell(1).font = {bold:true};
+subHead.getCell(2).font = {bold:true};
+subHead.getCell(1).border = THIN_BORDER;
+subHead.getCell(2).border = THIN_BORDER;
+leftover.forEach(l => {
+const row = ws.addRow([l.batch, l.count]);
+row.getCell(1).border = THIN_BORDER;
+row.getCell(2).border = THIN_BORDER;
+});
+}
+return ws;
+}
+async function downloadWorkbook(wb, fileName){
+const buffer = await wb.xlsx.writeBuffer();
+const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = fileName;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+}
+function examFileTag(){
+const examTitle = document.getElementById('examTitle').value.trim();
+const examDate = document.getElementById('examDate').value.trim();
+return [examTitle, examDate].filter(Boolean).join('_').replace(/\s+/g, '_');
+}
+function formatExamDate(){
+const raw = document.getElementById('examDate').value;
+if (!raw) return '';
+const d = new Date(raw + 'T00:00:00');
+if (isNaN(d.getTime())) return raw;
+return d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+}
+// Inserts a two-line title banner at the very top of a sheet — titleText
+// on its own bold row, then "Test Date: ..." below it — both merged
+// across the sheet's full column count.
+function addTitleBanner(ws, titleText, numCols){
+const dateStr = formatExamDate();
+const titleRow = ws.addRow([titleText || 'Test']);
+ws.mergeCells(titleRow.number, 1, titleRow.number, numCols);
+titleRow.height = 24;
+const titleCell = titleRow.getCell(1);
+titleCell.font = {bold:true, size:14, color:{argb:'FF1B2A4A'}};
+titleCell.alignment = {vertical:'middle', horizontal:'left'};
+if (dateStr){
+const dateRow = ws.addRow([`Test Date: ${dateStr}`]);
+ws.mergeCells(dateRow.number, 1, dateRow.number, numCols);
+dateRow.height = 20;
+const dateCell = dateRow.getCell(1);
+dateCell.font = {bold:true, size:11, color:{argb:'FF5B6B82'}};
+dateCell.alignment = {vertical:'middle', horizontal:'left'};
+}
+ws.addRow([]);
+}
+async function exportToExcel(){
+if (!lastResults){
+genStatus.className = 'status err';
+genStatus.textContent = 'Generate a seating plan first.';
+return;
+}
+const {roomResults, leftover} = lastResults;
+const wb = new ExcelJS.Workbook();
+buildSeatingSheet(wb, roomResults);
+buildSummarySheet(wb, roomResults, leftover);
+const tag = examFileTag();
+const fileName = ['SeatingPlan', tag].filter(Boolean).join('_') + '.xlsx';
+await downloadWorkbook(wb, fileName);
+}
+async function exportAttendanceExcel(){
+if (!lastResults){
+genStatus.className = 'status err';
+genStatus.textContent = 'Generate a seating plan first.';
+return;
+}
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('Attendance');
+ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
+const examTitleVal = document.getElementById('examTitle').value.trim() || 'Test Attendance';
+addTitleBanner(ws, examTitleVal, 7);
+const ROW_HEIGHT = 30;
+function addSummaryBox(totalCount){
+// A clean bordered summary: "Total Students: N" in one box, "Absent
+// Students:" label in a second box, and an empty bordered box (for
+// writing the count by hand) right next to it.
+const summaryRow = ws.addRow(['', '', '', 'Absent Students:', '', '', '']);
+summaryRow.height = ROW_HEIGHT;
+ws.mergeCells(summaryRow.number, 1, summaryRow.number, 2);
+ws.mergeCells(summaryRow.number, 4, summaryRow.number, 5);
+ws.mergeCells(summaryRow.number, 6, summaryRow.number, 7);
+const labelCell = summaryRow.getCell(1);
+labelCell.value = `Total Students:   ${totalCount}`;
+labelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+labelCell.fill = HALL_FILL;
+labelCell.border = THIN_BORDER;
+labelCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 2).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 2).fill = HALL_FILL;
+const absentLabelCell = summaryRow.getCell(4);
+absentLabelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+absentLabelCell.fill = HALL_FILL;
+absentLabelCell.border = THIN_BORDER;
+absentLabelCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 5).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 5).fill = HALL_FILL;
+const boxCell = summaryRow.getCell(6);
+boxCell.border = THIN_BORDER;
+boxCell.alignment = {horizontal:'center', vertical:'middle'};
+ws.getCell(summaryRow.number, 7).border = THIN_BORDER;
+}
+lastResults.roomResults.forEach(r => {
+const entries = r.seatEntries.slice().sort((a, b) => a.student.name.localeCompare(b.student.name, undefined, {sensitivity:'base'}));
+const bandRow = ws.addRow([`${r.room.name}   |   Students ${entries.length}`]);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+bandRow.height = ROW_HEIGHT;
+const bandCell = bandRow.getCell(1);
+bandCell.font = {bold:true, size:12, color:{argb:'FF1B2A4A'}};
+bandCell.fill = HALL_FILL;
+bandCell.alignment = {vertical:'middle', horizontal:'left'};
+for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Hall No.', 'Sign']);
+styleHeaderRow(headRow);
+headRow.height = ROW_HEIGHT;
+entries.forEach(e => {
+const row = ws.addRow([e.student.roll, e.student.name, e.student.father, e.student.cls, e.student.batch, r.room.name, '']);
+row.height = ROW_HEIGHT;
+row.eachCell((cell, colNumber) => {
+cell.border = THIN_BORDER;
+cell.alignment = (colNumber === 2 || colNumber === 3)
+? {horizontal:'left', vertical:'middle'}
+: {horizontal:'center', vertical:'middle'};
+});
+});
+addSummaryBox(entries.length);
+const spacer = ws.addRow([]);
+spacer.height = ROW_HEIGHT;
+});
+const tag = examFileTag();
+const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
+await downloadWorkbook(wb, fileName);
+}
+function isClassFullyExcluded(groupKey){
+if (!groupKey) return false; // no class/batch info on this transport row — can't judge, so don't filter
+const group = batchList.find(g => g.name === groupKey);
+if (!group) return false; // class not recognized at all — leave it to the normal match/mismatch check
+return group.batches.every(b => !selectedBatches.has(b.name));
+}
+function matchTransport(studentList, fullList){
+// Drop transport rows for a class that isn't ticked in Step 2 at all —
+// e.g. a batch that tests on an alternate schedule. These are silently
+// ignored, not shown as an error or even a note.
+const relevant = transportRaw.filter(t => !isClassFullyExcluded(t.groupKey));
+// Prefer matching by admission no. (roll); fall back to name only for
+// transport entries that have no admission no. of their own.
+const rollSet = new Set(relevant.filter(t => t.roll).map(t => t.roll.toLowerCase()));
+const nameSet = new Set(relevant.filter(t => !t.roll && t.name).map(t => t.name.toLowerCase()));
+const transportMatched = [];
+const remaining = [];
+studentList.forEach(s => {
+const rollMatch = s.roll && rollSet.has(s.roll.toLowerCase());
+const nameMatch = !rollMatch && s.name && nameSet.has(s.name.toLowerCase());
+if (rollMatch || nameMatch) transportMatched.push(s); else remaining.push(s);
+});
+const matchedRolls = new Set(transportMatched.filter(s => s.roll).map(s => s.roll.toLowerCase()));
+const matchedNames = new Set(transportMatched.filter(s => !s.roll).map(s => s.name.toLowerCase()));
+const stillUnmatchedInSelected = relevant.filter(t => {
+if (t.roll) return !matchedRolls.has(t.roll.toLowerCase());
+return !matchedNames.has((t.name||'').toLowerCase());
+});
+// Only match against the classes/batches ticked in Step 2 — a transport
+// entry that belongs to an unticked batch is expected to be skipped and
+// is NOT flagged as an error; only entries missing from the FULL upload
+// (typo / genuinely not in the list) are real mismatches.
+const fullRollSet = new Set(fullList.filter(s => s.roll).map(s => s.roll.toLowerCase()));
+const fullNameSet = new Set(fullList.filter(s => s.name).map(s => s.name.toLowerCase()));
+const excludedBySelection = [];
+const unmatchedTransport = [];
+stillUnmatchedInSelected.forEach(t => {
+const existsInFull = t.roll ? fullRollSet.has(t.roll.toLowerCase()) : fullNameSet.has((t.name||'').toLowerCase());
+if (existsInFull) excludedBySelection.push(t); else unmatchedTransport.push(t);
+});
+return {transportMatched, remaining, unmatchedTransport, excludedBySelection};
+}
+// Fills Slot 2 & Slot 3 first (up to `capacity` seats each, shuffled and
+// split as evenly as possible), then hands back whatever didn't fit as
+// overflow — that overflow is what computeSlots() below routes into
+// Slot 1's remaining free seats (transport students always keep their
+// seats in Slot 1; only the leftover space there is used for overflow).
+function distributeNonTransport(list, capacity){
+const shuffled = shuffle(list);
+const totalCap = capacity * 2;
+const withinCap = shuffled.slice(0, totalCap);
+const overflow = shuffled.slice(totalCap);
+const slot2 = [], slot3 = [];
+withinCap.forEach((s, i) => { (i % 2 === 0 ? slot2 : slot3).push(s); });
+return {slot2, slot3, overflow};
+}
+function computeSlots(transportMatched, nonTransportPool, capacity){
+const {slot2, slot3, overflow} = distributeNonTransport(nonTransportPool, capacity);
+const slot1FreeSpace = Math.max(0, capacity - transportMatched.length);
+const shuffledOverflow = shuffle(overflow);
+const toSlot1 = shuffledOverflow.slice(0, slot1FreeSpace);
+const unplaced = shuffledOverflow.slice(slot1FreeSpace);
+const slot1 = transportMatched.concat(toSlot1);
+return {slot1, slot2, slot3, unplaced};
+}
+function assignSlots(){
+genStatus.className = 'status';
+if (!students.length){
+genStatus.className = 'status err';
+genStatus.textContent = 'Please upload a student list and tick at least one class first.';
+return;
+}
+if (!transportRaw.length){
+genStatus.className = 'status err';
+genStatus.textContent = 'Please upload the transport students list first.';
+return;
+}
+const capacity = getSlotCapacity();
+const {transportMatched, remaining, unmatchedTransport, excludedBySelection} = matchTransport(students, allStudentsRaw);
+const computed = computeSlots(transportMatched, remaining, capacity);
+lastSlotResults = {
+transportMatched,
+nonTransportPool: remaining,
+slot1: computed.slot1,
+slot2: computed.slot2,
+slot3: computed.slot3,
+unplaced: computed.unplaced,
+unmatchedTransport,
+excludedBySelection,
+capacity
+};
+renderSlotResults(lastSlotResults);
+reshuffleSlotsBtn.style.display = 'inline-block';
+slotExcelBtn.style.display = 'inline-block';
+slotAttendanceBtn.style.display = 'inline-block';
+genStatus.className = 'status ok';
+genStatus.textContent = 'Slots assigned.';
+}
+function reshuffleSlots(){
+if (!lastSlotResults) return;
+const capacity = getSlotCapacity();
+const computed = computeSlots(lastSlotResults.transportMatched, lastSlotResults.nonTransportPool, capacity);
+lastSlotResults = {...lastSlotResults, slot1: computed.slot1, slot2: computed.slot2, slot3: computed.slot3, unplaced: computed.unplaced, capacity};
+renderSlotResults(lastSlotResults);
+genStatus.className = 'status ok';
+genStatus.textContent = 'Slots reshuffled.';
+}
+function classBreakdownOf(list){
+const counts = {};
+list.forEach(s => { counts[s.groupKey] = (counts[s.groupKey]||0) + 1; });
+return Object.keys(counts).map(c => ({name:c, count:counts[c]})).sort((a,b) => b.count - a.count);
+}
+function sortByBatchThenName(list){
+return list.slice().sort((a, b) => {
+const batchCompare = (a.batch||'').localeCompare(b.batch||'', undefined, {sensitivity:'base'});
+if (batchCompare !== 0) return batchCompare;
+return (a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'});
+});
+}
+function removeUnmatchedTransport(){
+if (!lastSlotResults || !lastSlotResults.unmatchedTransport.length) return;
+const removeSet = new Set(lastSlotResults.unmatchedTransport);
+const removedCount = removeSet.size;
+transportRaw = transportRaw.filter(t => !removeSet.has(t));
+transportStatus.className = 'status ok';
+transportStatus.textContent = `Removed ${removedCount} unmatched student(s) from the transport list. ${transportRaw.length} remaining.`;
+assignSlots();
+}
+function renderSlotResults(data){
+document.getElementById('printInst').textContent = document.getElementById('instName').value || 'Institute';
+const examTitle = document.getElementById('examTitle').value;
+const examDate = document.getElementById('examDate').value;
+document.getElementById('printExam').textContent = [examTitle, examDate].filter(Boolean).join(' · ');
+let html = '';
+if (data.unmatchedTransport.length){
+html += `<div class="leftover no-print"><strong>Warning:</strong> ${data.unmatchedTransport.length} transport student(s) from the uploaded list were not found at all (check name/admission no. spelling): ${data.unmatchedTransport.map(t => t.name || t.roll).join(', ')}.
+<div style="margin-top:10px;"><button type="button" id="removeUnmatchedTransportBtn" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:var(--radius);font-size:12.5px;font-weight:600;cursor:pointer;">Remove these ${data.unmatchedTransport.length} from the transport list</button></div>
+</div>`;
+}
+if (data.excludedBySelection && data.excludedBySelection.length){
+html += `<div class="info-note no-print">${data.excludedBySelection.length} transport student(s) belong to a class/batch not ticked in Step 2, so they were skipped (not an error): ${data.excludedBySelection.map(t => t.name || t.roll).join(', ')}.</div>`;
+}
+if (data.transportMatched.length > data.capacity){
+html += `<div class="leftover no-print"><strong>Note:</strong> Slot 1 has ${data.transportMatched.length} transport student(s), above the configured capacity of ${data.capacity}. All transport students have still been kept in Slot 1 since that's a fixed requirement.</div>`;
+}
+if (data.unplaced.length){
+html += `<div class="leftover no-print"><strong>Warning:</strong> All 3 slots are full at ${data.capacity} seats each. ${data.unplaced.length} student(s) could not be placed in any slot — increase the seats-per-slot capacity or move them manually.</div>`;
+}
+const lists = [
+{def: SLOT_DEFS[0], list: data.slot1},
+{def: SLOT_DEFS[1], list: data.slot2},
+{def: SLOT_DEFS[2], list: data.slot3}
+];
+const transportSet = new Set(data.transportMatched);
+lists.forEach(({def, list}) => {
+const classBreakdown = classBreakdownOf(list);
+const sortedList = sortByBatchThenName(list);
+const anyTransportHere = sortedList.some(s => transportSet.has(s));
+html += `<div class="room-card">
+<h3>${def.label} &nbsp;<span style="color:var(--slate);font-weight:400;font-size:14px;">${def.timing}</span></h3>
+<div class="meta">Capacity ${data.capacity} &nbsp;·&nbsp; Seated ${list.length}</div>
+<div class="batches">${classBreakdown.map(c => `<span class="badge">${c.name}: ${c.count}</span>`).join('')}</div>
+${anyTransportHere ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px;"><span style="display:inline-block;width:11px;height:11px;background:#FDECC8;border:1px solid var(--gold);border-radius:2px;vertical-align:-1px;margin-right:5px;"></span>Transport student</div>` : ''}
+<table class="data">
+<thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
+<tbody>
+${sortedList.map(s => `<tr${transportSet.has(s) ? ' style="background:#FDECC8;"' : ''}><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td></tr>`).join('')}
+</tbody>
+</table>
+</div>`;
+});
+if (data.unplaced.length){
+const sortedUnplaced = sortByBatchThenName(data.unplaced);
+html += `<div class="room-card">
+<h3>Not Assigned <span style="color:var(--red);font-weight:400;font-size:14px;">(all slots full)</span></h3>
+<div class="meta">Students ${data.unplaced.length}</div>
+<table class="data">
+<thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
+<tbody>
+${sortedUnplaced.map(s => `<tr><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td></tr>`).join('')}
+</tbody>
+</table>
+</div>`;
+
+}
+results.innerHTML = html;
+const removeBtn = document.getElementById('removeUnmatchedTransportBtn');
+if (removeBtn) removeBtn.addEventListener('click', removeUnmatchedTransport);
+}
+function buildSlotSheet(wb, data){
+const ws = wb.addWorksheet('Slot Assignment');
+ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22}];
+addTitleBanner(ws, 'Test Seating Plan', 6);
+const flat = [];
+[{def: SLOT_DEFS[0], list: data.slot1},
+{def: SLOT_DEFS[1], list: data.slot2},
+{def: SLOT_DEFS[2], list: data.slot3}].forEach(({def, list}) => {
+list.forEach(s => flat.push({student: s, slotLabel: def.timing}));
+});
+data.unplaced.forEach(s => flat.push({student: s, slotLabel: 'Not Assigned'}));
+const transportSet = new Set(data.transportMatched);
+// Single continuous table — sorted Batch then Student Name — so the
+// Batch column alone identifies each group without a repeated banner.
+const sorted = flat.slice().sort((a, b) => {
+const batchCompare = (a.student.batch||'').localeCompare(b.student.batch||'', undefined, {sensitivity:'base'});
+if (batchCompare !== 0) return batchCompare;
+return a.student.name.localeCompare(b.student.name, undefined, {sensitivity:'base'});
+});
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot']);
+styleHeaderRow(headRow);
+sorted.forEach(f => {
+const row = ws.addRow([f.student.roll, f.student.name, f.student.father, f.student.cls, f.student.batch, f.slotLabel]);
+const isTransport = transportSet.has(f.student);
+row.eachCell((cell, colNumber) => {
+cell.border = THIN_BORDER;
+if (isTransport) cell.fill = TRANSPORT_FILL;
+cell.alignment = (colNumber === 2 || colNumber === 3)
+? {horizontal:'left', vertical:'middle'}
+: {horizontal:'center', vertical:'middle'};
+});
+});
+return ws;
+}
+async function exportSlotExcel(){
+if (!lastSlotResults){
+genStatus.className = 'status err';
+genStatus.textContent = 'Assign slots first.';
+return;
+}
+const wb = new ExcelJS.Workbook();
+buildSlotSheet(wb, lastSlotResults);
+const tag = examFileTag();
+const fileName = ['SlotAssignment', tag].filter(Boolean).join('_') + '.xlsx';
+await downloadWorkbook(wb, fileName);
+}
+async function exportSlotAttendanceExcel(){
+if (!lastSlotResults){
+genStatus.className = 'status err';
+genStatus.textContent = 'Assign slots first.';
+return;
+}
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('Attendance');
+ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
+const examTitleVal = document.getElementById('examTitle').value.trim() || 'Test Attendance';
+addTitleBanner(ws, examTitleVal, 7);
+const ROW_HEIGHT = 30;
+function addSummaryBox(totalCount){
+// A clean bordered summary: "Total Students: N" in one box, "Absent
+// Students:" label in a second box, and an empty bordered box (for
+// writing the count by hand) right next to it.
+const summaryRow = ws.addRow(['', '', '', 'Absent Students:', '', '', '']);
+summaryRow.height = ROW_HEIGHT;
+ws.mergeCells(summaryRow.number, 1, summaryRow.number, 2);
+ws.mergeCells(summaryRow.number, 4, summaryRow.number, 5);
+ws.mergeCells(summaryRow.number, 6, summaryRow.number, 7);
+const labelCell = summaryRow.getCell(1);
+labelCell.value = `Total Students:   ${totalCount}`;
+labelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+labelCell.fill = HALL_FILL;
+labelCell.border = THIN_BORDER;
+labelCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 2).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 2).fill = HALL_FILL;
+const absentLabelCell = summaryRow.getCell(4);
+absentLabelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+absentLabelCell.fill = HALL_FILL;
+absentLabelCell.border = THIN_BORDER;
+absentLabelCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 5).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 5).fill = HALL_FILL;
+const boxCell = summaryRow.getCell(6);
+boxCell.border = THIN_BORDER;
+boxCell.alignment = {horizontal:'center', vertical:'middle'};
+ws.getCell(summaryRow.number, 7).border = THIN_BORDER;
+}
+const lists = [
+{def: SLOT_DEFS[0], list: lastSlotResults.slot1},
+{def: SLOT_DEFS[1], list: lastSlotResults.slot2},
+{def: SLOT_DEFS[2], list: lastSlotResults.slot3}
+];
+lists.forEach(({def, list}) => {
+const entries = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+const bandRow = ws.addRow([`${def.label} (${def.timing})   |   Students ${entries.length}`]);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+bandRow.height = ROW_HEIGHT;
+const bandCell = bandRow.getCell(1);
+bandCell.font = {bold:true, size:12, color:{argb:'FF1B2A4A'}};
+bandCell.fill = HALL_FILL;
+bandCell.alignment = {vertical:'middle', horizontal:'left'};
+for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot', 'Sign']);
+styleHeaderRow(headRow);
+headRow.height = ROW_HEIGHT;
+entries.forEach(s => {
+const row = ws.addRow([s.roll, s.name, s.father, s.cls, s.batch, def.label, '']);
+row.height = ROW_HEIGHT;
+row.eachCell((cell, colNumber) => {
+cell.border = THIN_BORDER;
+cell.alignment = (colNumber === 2 || colNumber === 3)
+? {horizontal:'left', vertical:'middle'}
+: {horizontal:'center', vertical:'middle'};
+});
+});
+addSummaryBox(entries.length);
+const spacer = ws.addRow([]);
+spacer.height = ROW_HEIGHT;
+});
+if (lastSlotResults.unplaced.length){
+const entries = lastSlotResults.unplaced.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+const bandRow = ws.addRow([`Not Assigned   |   Students ${entries.length}`]);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+bandRow.height = ROW_HEIGHT;
+const bandCell = bandRow.getCell(1);
+bandCell.font = {bold:true, size:12, color:{argb:'FFA9402F'}};
+bandCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFBEEEC'}};
+bandCell.alignment = {vertical:'middle', horizontal:'left'};
+for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot', 'Sign']);
+styleHeaderRow(headRow);
+headRow.height = ROW_HEIGHT;
+entries.forEach(s => {
+const row = ws.addRow([s.roll, s.name, s.father, s.cls, s.batch, '-', '']);
+row.height = ROW_HEIGHT;
+row.eachCell((cell, colNumber) => {
+cell.border = THIN_BORDER;
+cell.alignment = (colNumber === 2 || colNumber === 3)
+? {horizontal:'left', vertical:'middle'}
+: {horizontal:'center', vertical:'middle'};
+});
+});
+addSummaryBox(entries.length);
+}
+const tag = examFileTag();
+const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
+await downloadWorkbook(wb, fileName);
+}
+const generateConfirmOverlay = document.getElementById('generateConfirmOverlay');
+const generateConfirmTitle = document.getElementById('generateConfirmTitle');
+const generateConfirmBody = document.getElementById('generateConfirmBody');
+const generateConfirmYes = document.getElementById('generateConfirmYes');
+const generateConfirmNo = document.getElementById('generateConfirmNo');
+let pendingConfirmAction = null;
+function askConfirm(title, body, action){
+generateConfirmTitle.textContent = title;
+generateConfirmBody.textContent = body;
+pendingConfirmAction = action;
+generateConfirmOverlay.style.display = 'flex';
+}
+generateConfirmYes.addEventListener('click', () => {
+generateConfirmOverlay.style.display = 'none';
+const action = pendingConfirmAction;
+pendingConfirmAction = null;
+if (action) action();
+});
+generateConfirmNo.addEventListener('click', () => {
+generateConfirmOverlay.style.display = 'none';
+pendingConfirmAction = null;
+});
+generateConfirmOverlay.addEventListener('click', (e) => { if (e.target === generateConfirmOverlay){ generateConfirmOverlay.style.display = 'none'; pendingConfirmAction = null; } });
+generateBtn.addEventListener('click', () => askConfirm(
+'Generate the seating plan?',
+'This will shuffle and assign students to the ticked halls based on your current settings.',
+runGeneration
+));
+reshuffleBtn.addEventListener('click', runGeneration);
+printBtn.addEventListener('click', () => window.print());
+excelBtn.addEventListener('click', exportToExcel);
+attendanceBtn.addEventListener('click', exportAttendanceExcel);
+assignSlotsBtn.addEventListener('click', () => askConfirm(
+'Assign slots?',
+'This will fix transport students to Slot 1 and shuffle the rest across Slots 2 & 3 based on your current settings.',
+assignSlots
+));
+reshuffleSlotsBtn.addEventListener('click', reshuffleSlots);
+slotExcelBtn.addEventListener('click', exportSlotExcel);
+slotAttendanceBtn.addEventListener('click', exportSlotAttendanceExcel);
+const resetBtn = document.getElementById('resetBtn');
+const resetModalOverlay = document.getElementById('resetModalOverlay');
+const resetConfirmYes = document.getElementById('resetConfirmYes');
+const resetConfirmNo = document.getElementById('resetConfirmNo');
+resetBtn.addEventListener('click', () => { resetModalOverlay.style.display = 'flex'; });
+resetConfirmNo.addEventListener('click', () => { resetModalOverlay.style.display = 'none'; });
+resetConfirmYes.addEventListener('click', () => { location.reload(); });
+resetModalOverlay.addEventListener('click', (e) => { if (e.target === resetModalOverlay) resetModalOverlay.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>
