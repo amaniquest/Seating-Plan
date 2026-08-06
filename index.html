@@ -704,7 +704,25 @@ if (!cb.checked && !cb.disabled) cb.disabled = atMax;
 function refreshAllPinSelects(){
 roomRows.querySelectorAll('.room-row').forEach(row => populatePinPanel(row));
 }
-addRoomRow('Room 1', '');
+// Pre-filled halls — the institute's actual room list, loaded by default
+// every time the page opens. Edit this array (or use "Load saved room
+// list" in the app) if the hall list ever changes.
+const DEFAULT_HALLS = [
+{name:'Hall No. 1', capacity:48},
+{name:'Hall No. 2', capacity:48},
+{name:'Hall No. 3', capacity:48},
+{name:'Hall No. 4', capacity:48},
+{name:'Hall No. 5', capacity:36},
+{name:'Hall No. 8', capacity:48},
+{name:'Hall No. 9', capacity:75},
+{name:'Hall No. 10', capacity:48},
+{name:'Hall No. 11', capacity:48},
+{name:'Hall No. 12', capacity:48},
+{name:'Hall No. 13', capacity:48},
+{name:'Hall No. 14', capacity:39},
+{name:'Hall No. 15', capacity:60}
+];
+DEFAULT_HALLS.forEach(h => addRoomRow(h.name, h.capacity));
 addRoomBtn.addEventListener('click', () => addRoomRow());
 function updateSelectedSummary(){
 const el = document.getElementById('selectedSummary');
