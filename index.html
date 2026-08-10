@@ -272,6 +272,19 @@ body{background:#fff;}
 </div>
 </div>
 </div>
+<div id="hallsAssignOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(27,42,74,0.5);z-index:1000;align-items:center;justify-content:center;">
+<div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:32px 36px;max-width:400px;text-align:center;">
+<div style="font-family:var(--font-display);font-size:19px;color:var(--ink);margin-bottom:10px;font-weight:800;">How do you want to select halls?</div>
+<div id="hallsAssignBody" style="color:var(--slate);font-size:13.5px;margin-bottom:24px;line-height:1.55;text-align:left;">
+<strong style="color:var(--ink);">Manual</strong> — keep your own hall ticks/settings exactly as they are.<br><br>
+<strong style="color:var(--ink);">Auto</strong> — automatically ticks just enough halls (largest first) to fit all selected students, and unticks the rest.
+</div>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button class="ghost" type="button" id="hallsAssignManual">Manual</button>
+<button class="action" type="button" id="hallsAssignAuto">Auto</button>
+</div>
+</div>
+</div>
 <!-- STEP 1: Exam details -->
 <section class="step no-print">
 
@@ -349,6 +362,10 @@ Online test (time slots)
 </div>
 <div class="status" id="capacitySummary" style="margin-bottom:6px;"></div>
 <div class="status" id="selectedSummary" style="margin-bottom:14px;"></div>
+<div class="row-actions" style="margin-bottom:16px;">
+<button class="ghost" id="assignHallsBtn" type="button">Auto-assign halls…</button>
+<div class="status" id="autoHallsStatus" style="margin-top:0;"></div>
+</div>
 <div id="roomRows"></div>
 <div class="row-actions">
 <button class="ghost" id="addRoomBtn" type="button">+ Add hall</button>
@@ -777,6 +794,68 @@ el.textContent = `${students.length} students loaded — needs ${needed} of your
 el.className = 'status err';
 el.textContent = `${students.length} students loaded — even all ${caps.length} defined halls (total capacity ${capSum}) fall short by ${students.length - capSum}.`;
 }
+}
+const hallsAssignOverlay = document.getElementById('hallsAssignOverlay');
+const assignHallsBtn = document.getElementById('assignHallsBtn');
+const hallsAssignManual = document.getElementById('hallsAssignManual');
+const hallsAssignAuto = document.getElementById('hallsAssignAuto');
+const autoHallsStatus = document.getElementById('autoHallsStatus');
+let autoHallsMode = false;
+assignHallsBtn.addEventListener('click', () => { hallsAssignOverlay.style.display = 'flex'; });
+hallsAssignManual.addEventListener('click', () => {
+hallsAssignOverlay.style.display = 'none';
+autoHallsMode = false;
+autoHallsStatus.className = 'status';
+autoHallsStatus.textContent = 'Manual mode — your own hall ticks will be used.';
+});
+hallsAssignAuto.addEventListener('click', () => {
+hallsAssignOverlay.style.display = 'none';
+autoSelectHalls();
+});
+hallsAssignOverlay.addEventListener('click', (e) => { if (e.target === hallsAssignOverlay) hallsAssignOverlay.style.display = 'none'; });
+// Ticks just enough halls (largest first) to cover every selected
+// student, unticking the rest — shuffles first so which halls get
+// picked among equal-capacity options varies run to run (matters for
+// "All Shuffle" re-running this in auto mode, so the hall combination
+// can genuinely change too, not just who sits where).
+function autoSelectHalls(){
+const rows = Array.from(roomRows.querySelectorAll('.room-row'));
+if (!rows.length){
+autoHallsStatus.className = 'status err';
+autoHallsStatus.textContent = 'No halls to select from — add at least one hall first.';
+return;
+}
+const needed = students.length;
+if (!needed){
+autoHallsStatus.className = 'status err';
+autoHallsStatus.textContent = 'Upload a student list and tick at least one class first.';
+return;
+}
+const sortedRows = shuffle(rows).sort((a, b) => {
+const capA = parseInt(a.querySelector('.roomCap').value, 10) || 0;
+const capB = parseInt(b.querySelector('.roomCap').value, 10) || 0;
+return capB - capA;
+});
+let cumulative = 0;
+let usedCount = 0;
+sortedRows.forEach(row => {
+const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
+const useBox = row.querySelector('.roomUse');
+if (cumulative < needed && cap > 0){
+useBox.checked = true;
+row.classList.remove('disabled');
+cumulative += cap;
+usedCount++;
+} else {
+useBox.checked = false;
+row.classList.add('disabled');
+}
+});
+updateCapacitySummary();
+updateSelectedSummary();
+autoHallsMode = true;
+autoHallsStatus.className = cumulative >= needed ? 'status ok' : 'status err';
+autoHallsStatus.textContent = `Auto-selected ${usedCount} hall(s), total capacity ${cumulative}, for ${needed} student(s).${cumulative < needed ? ` Still short by ${needed - cumulative} — add more capacity.` : ''}`;
 }
 const saveRoomsBtn = document.getElementById('saveRoomsBtn');
 const loadRoomsBtn = document.getElementById('loadRoomsBtn');
@@ -1434,9 +1513,8 @@ pinnedIndices.add(roomIdx);
 // from; smaller halls (which need smaller, easier-to-satisfy chunks)
 // are filled afterwards from whatever's left. The results are restored
 // to the hall's original list order before being shown.
-const processingOrder = rooms
-.map((room, idx) => idx)
-.filter(idx => !pinnedIndices.has(idx))
+const nonPinnedIndices = rooms.map((room, idx) => idx).filter(idx => !pinnedIndices.has(idx));
+const processingOrder = (randomizeClasses ? shuffle(nonPinnedIndices) : nonPinnedIndices)
 .sort((i, j) => rooms[j].capacity - rooms[i].capacity);
 processingOrder.forEach(roomIdx => {
 const room = rooms[roomIdx];
@@ -2226,8 +2304,8 @@ reshuffleBtn.addEventListener('click', () => askConfirm(
 ));
 allShuffleBtn.addEventListener('click', () => askConfirm(
 'Reshuffle everything?',
-'This reshuffles both the students AND which classes get paired together in each hall — the whole plan can change.',
-() => runGeneration(true)
+'This reshuffles the students, which classes get paired together, and — if Auto halls mode is on — which halls get used.',
+() => { if (autoHallsMode) autoSelectHalls(); runGeneration(true); }
 ));
 printBtn.addEventListener('click', () => window.print());
 excelBtn.addEventListener('click', exportToExcel);
