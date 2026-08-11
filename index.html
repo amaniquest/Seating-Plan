@@ -574,8 +574,33 @@ lastSlotResults = null;
 genStatus.className = 'status';
 genStatus.textContent = '';
 }
-document.getElementById('testTypeOffline').addEventListener('change', () => setTestType('offline'));
-document.getElementById('testTypeOnline').addEventListener('change', () => setTestType('online'));
+const MODE_SWITCH_KEY = 'examSeatingPlanPendingMode';
+function handleModeSwitch(newType){
+const previousType = testType;
+const previousRadio = document.getElementById(previousType === 'online' ? 'testTypeOnline' : 'testTypeOffline');
+askConfirm(
+`Shift to ${newType === 'online' ? 'Online' : 'Offline'} mode?`,
+'This will refresh the page and switch to the other mode.',
+() => {
+try { sessionStorage.setItem(MODE_SWITCH_KEY, newType); } catch(e){}
+location.reload();
+},
+() => { previousRadio.checked = true; }
+);
+}
+document.getElementById('testTypeOffline').addEventListener('change', () => handleModeSwitch('offline'));
+document.getElementById('testTypeOnline').addEventListener('change', () => handleModeSwitch('online'));
+// If a mode switch was just confirmed (see handleModeSwitch above), restore
+// that choice after the reload it triggers.
+(function restorePendingMode(){
+let pending = null;
+try { pending = sessionStorage.getItem(MODE_SWITCH_KEY); } catch(e){}
+if (pending === 'online' || pending === 'offline'){
+try { sessionStorage.removeItem(MODE_SWITCH_KEY); } catch(e){}
+document.getElementById(pending === 'online' ? 'testTypeOnline' : 'testTypeOffline').checked = true;
+setTestType(pending);
+}
+})();
 function addRoomRow(name, cap, used, pins){
 const row = document.createElement('div');
 row.className = 'room-row';
@@ -2275,23 +2300,37 @@ const generateConfirmBody = document.getElementById('generateConfirmBody');
 const generateConfirmYes = document.getElementById('generateConfirmYes');
 const generateConfirmNo = document.getElementById('generateConfirmNo');
 let pendingConfirmAction = null;
-function askConfirm(title, body, action){
+let pendingCancelAction = null;
+function askConfirm(title, body, action, onCancel){
 generateConfirmTitle.textContent = title;
 generateConfirmBody.textContent = body;
 pendingConfirmAction = action;
+pendingCancelAction = onCancel || null;
 generateConfirmOverlay.style.display = 'flex';
 }
 generateConfirmYes.addEventListener('click', () => {
 generateConfirmOverlay.style.display = 'none';
 const action = pendingConfirmAction;
 pendingConfirmAction = null;
+pendingCancelAction = null;
 if (action) action();
 });
 generateConfirmNo.addEventListener('click', () => {
 generateConfirmOverlay.style.display = 'none';
 pendingConfirmAction = null;
+const cancelAction = pendingCancelAction;
+pendingCancelAction = null;
+if (cancelAction) cancelAction();
 });
-generateConfirmOverlay.addEventListener('click', (e) => { if (e.target === generateConfirmOverlay){ generateConfirmOverlay.style.display = 'none'; pendingConfirmAction = null; } });
+generateConfirmOverlay.addEventListener('click', (e) => {
+if (e.target === generateConfirmOverlay){
+generateConfirmOverlay.style.display = 'none';
+pendingConfirmAction = null;
+const cancelAction = pendingCancelAction;
+pendingCancelAction = null;
+if (cancelAction) cancelAction();
+}
+});
 generateBtn.addEventListener('click', () => askConfirm(
 'Generate the seating plan?',
 'This will shuffle and assign students to the ticked halls based on your current settings.',
