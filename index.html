@@ -1674,7 +1674,10 @@ pinnedLeftover.forEach(s => { pinnedLeftoverGrouped[s.batch] = (pinnedLeftoverGr
 const pinnedLeftoverList = Object.keys(pinnedLeftoverGrouped)
 .map(b => ({batch: b, count: pinnedLeftoverGrouped[b]}));
 const leftover = [...poolLeftover, ...pinnedLeftoverList];
-return {roomResults, leftover};
+const leftoverStudents = [];
+pool.forEach(b => { if (b.students.length > 0) leftoverStudents.push(...b.students); });
+leftoverStudents.push(...pinnedLeftover);
+return {roomResults, leftover, leftoverStudents};
 }
 function renderResults(data){
 const {roomResults, leftover} = data;
@@ -1687,9 +1690,10 @@ let html = '';
 if (leftover.length){
 html += `<div class="leftover no-print"><strong>Warning:</strong> total hall capacity is short.
 Not seated: ${leftover.map(l => `${l.batch} (${l.count})`).join(', ')}.
-Add more capacity or another hall.</div>`;
+Add more capacity or another hall, or manually adjust each student into a hall below.</div>`;
 }
 roomResults.forEach(r => {
+const manualEntries = r.seatEntries.filter(e => e.manual);
 html += `<div class="room-card">
 <h3>${r.room.name}${r.pinned ? ' <span class="badge" style="background:var(--maroon);font-size:10px;vertical-align:middle;">PINNED</span>' : ''}</h3>
 <div class="meta">Capacity ${r.room.capacity} &nbsp;·&nbsp; Seated ${r.used}</div>
@@ -1698,7 +1702,11 @@ const clsTotal = r.classBreakdown.find(c => c.name === b);
 return `<span class="badge">${b}: ${clsTotal ? clsTotal.count : 0}</span>`;
 }).join('')}</div>
 <div class="batch-breakdown">${r.batchBreakdown.map(b => `<span class="mini-badge">${b.name}: ${b.count}</span>`).join('')}</div>
-${r.overflowed ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
+${r.overflowed && !r.manuallyAdjusted ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
+${manualEntries.length ? `<div class="overflow-note no-print">Manually moved in from pending: ${manualEntries.map(e => {
+const seatIdx = r.seatEntries.indexOf(e);
+return `<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 8px 2px 0;">${e.student.name}<button type="button" class="removeManualBtn" data-hall="${r.room.name.replace(/"/g,'&quot;')}" data-seat-idx="${seatIdx}" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:10px;width:16px;height:16px;line-height:1;font-size:11px;cursor:pointer;padding:0;">&times;</button></span>`;
+}).join('')}</div>` : ''}
 <table class="data">
 <thead><tr><th>Seat</th><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
 <tbody>
@@ -1710,7 +1718,114 @@ ${r.seatEntries.map(e => `<tr>
 </table>
 </div>`;
 });
+if (data.leftoverStudents && data.leftoverStudents.length){
+html += `<div class="room-card">
+<h3>Pending Students <span style="color:var(--red);font-weight:400;font-size:14px;">(not auto-seated)</span></h3>
+<div class="meta">Students ${data.leftoverStudents.length} — pick a hall for each one below. Only halls with spare seats, or the hall(s) already seating that student's own class, are listed. Capacity is a guide, not a hard limit — real attendance is usually a bit lower due to absentees.</div>
+<table class="data">
+<thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th><th>Assign to hall</th></tr></thead>
+<tbody>
+${data.leftoverStudents.map((s, idx) => {
+const relevantHalls = roomResults.filter(r => {
+const spare = r.room.capacity - r.used;
+const hasSameClass = r.classBreakdown.some(c => c.name === s.groupKey);
+return spare > 0 || hasSameClass;
+});
+const hallOptions = relevantHalls.map(r => {
+const spare = r.room.capacity - r.used;
+return `<option value="${r.room.name.replace(/"/g,'&quot;')}">${r.room.name} (spare: ${spare})</option>`;
+}).join('');
+return `<tr>
+<td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td>
+<td><select class="pendingHallSelect" data-idx="${idx}"><option value="">— Choose hall —</option>${hallOptions || '<option value="" disabled>No matching hall</option>'}</select></td>
+</tr>`;
+}).join('')}
+</tbody>
+</table>
+</div>`;
+}
 results.innerHTML = html;
+results.querySelectorAll('.pendingHallSelect').forEach(sel => {
+sel.addEventListener('change', () => {
+const idx = parseInt(sel.dataset.idx, 10);
+const hallName = sel.value;
+if (!hallName) return;
+manuallyAssignLeftoverStudent(idx, hallName);
+});
+});
+results.querySelectorAll('.removeManualBtn').forEach(btn => {
+btn.addEventListener('click', () => {
+const hallName = btn.dataset.hall;
+const seatIdx = parseInt(btn.dataset.seatIdx, 10);
+removeManualStudentFromHall(hallName, seatIdx);
+});
+});
+}
+// Adds one student into a hall's results outside the normal allocation
+// passes — used for manually placing a "pending" (leftover) student.
+// Ignores capacity on purpose: the person doing this has decided it's
+// fine (e.g. expected absentees), so it's their call, not a hard block.
+// Tagged `manual: true` so it can be told apart from automatic overflow
+// seats and shown with a Remove option.
+function addStudentToRoomManually(roomResult, student){
+roomResult.seatEntries.push({student, seatInRow: null, manual: true});
+if (!roomResult.batches.includes(student.groupKey)) roomResult.batches.push(student.groupKey);
+const existing = roomResult.batchBreakdown.find(b => b.name === student.batch);
+if (existing) existing.count += 1;
+else roomResult.batchBreakdown.push({name: student.batch, count: 1});
+roomResult.batchBreakdown.sort((a,b) => b.count - a.count);
+const existingCls = roomResult.classBreakdown.find(c => c.name === student.groupKey);
+if (existingCls) existingCls.count += 1;
+else roomResult.classBreakdown.push({name: student.groupKey, count: 1});
+roomResult.classBreakdown.sort((a,b) => b.count - a.count);
+roomResult.used += 1;
+roomResult.manuallyAdjusted = true;
+}
+function manuallyAssignLeftoverStudent(studentIdx, hallName){
+if (!lastResults || !lastResults.leftoverStudents) return;
+const student = lastResults.leftoverStudents[studentIdx];
+if (!student) return;
+const room = lastResults.roomResults.find(r => r.room.name === hallName);
+if (!room) return;
+addStudentToRoomManually(room, student);
+lastResults.leftoverStudents.splice(studentIdx, 1);
+// Keep the aggregate leftover counts (shown in the warning banner) in sync.
+const counts = {};
+lastResults.leftoverStudents.forEach(s => { counts[s.batch] = (counts[s.batch]||0) + 1; });
+lastResults.leftover = Object.keys(counts).map(b => ({batch: b, count: counts[b]}));
+renderResults(lastResults);
+}
+// Undoes a manual pending-student assignment (e.g. a misclick) — pulls
+// that one seat back out of the hall and returns the student to the
+// Pending Students list, instead of having to redo the whole plan.
+function removeManualStudentFromHall(hallName, seatIdx){
+if (!lastResults) return;
+const room = lastResults.roomResults.find(r => r.room.name === hallName);
+if (!room) return;
+const entry = room.seatEntries[seatIdx];
+if (!entry || !entry.manual) return;
+const student = entry.student;
+room.seatEntries.splice(seatIdx, 1);
+room.used -= 1;
+const batchEntry = room.batchBreakdown.find(b => b.name === student.batch);
+if (batchEntry){
+batchEntry.count -= 1;
+if (batchEntry.count <= 0) room.batchBreakdown = room.batchBreakdown.filter(b => b !== batchEntry);
+}
+const classEntry = room.classBreakdown.find(c => c.name === student.groupKey);
+if (classEntry){
+classEntry.count -= 1;
+if (classEntry.count <= 0) room.classBreakdown = room.classBreakdown.filter(c => c !== classEntry);
+}
+if (!room.seatEntries.some(e => e.student.groupKey === student.groupKey)){
+room.batches = room.batches.filter(b => b !== student.groupKey);
+}
+if (!room.seatEntries.some(e => e.manual)) room.manuallyAdjusted = false;
+lastResults.leftoverStudents.push(student);
+const counts = {};
+lastResults.leftoverStudents.forEach(s => { counts[s.batch] = (counts[s.batch]||0) + 1; });
+lastResults.leftover = Object.keys(counts).map(b => ({batch: b, count: counts[b]}));
+renderResults(lastResults);
 }
 function runGeneration(randomizeClasses){
 genStatus.className = 'status';
