@@ -22,9 +22,15 @@
 --red:#A9402F;
 --red-soft:#FBEEEC;
 --green:#3E6B4F;
---radius:4px;
---shadow-sm:0 1px 2px rgba(27,42,74,.05);
---shadow-md:0 10px 30px rgba(27,42,74,.10);
+--blue:#2757A6;
+--blue-dark:#173B78;
+--blue-soft:#DCE8FA;
+--radius:10px;
+--radius-lg:16px;
+--radius-sm:7px;
+--shadow-sm:0 1px 3px rgba(27,42,74,.07);
+--shadow-md:0 14px 34px rgba(27,42,74,.14);
+--shadow-lg:0 22px 48px rgba(27,42,74,.20);
 --font-display:'Playfair Display', Georgia, 'Times New Roman', serif;
 --font-body:'Inter', "Segoe UI", system-ui, -apple-system, sans-serif;
 --font-mono:'IBM Plex Mono', "Courier New", monospace;
@@ -84,6 +90,7 @@ background:
 radial-gradient(circle at center, var(--card) 0 61%, transparent 62%),
 repeating-conic-gradient(var(--gold) 0deg 6deg, transparent 6deg 18deg);
 border:1px solid var(--gold);
+box-shadow:0 3px 10px rgba(173,127,62,.35);
 }
 .seal::before{
 content:"";position:absolute;inset:6px;border:1px solid var(--gold-soft);border-radius:50%;
@@ -93,29 +100,64 @@ position:relative;font-family:var(--font-display);font-weight:800;color:var(--in
 font-size:10px;text-align:center;line-height:1.2;letter-spacing:0.4px;
 }
 section.step{
+position:relative;
 background:var(--card);
 border:1px solid var(--line);
-border-radius:var(--radius);
+border-radius:var(--radius-lg);
 box-shadow:var(--shadow-sm);
-padding:26px 28px;
-margin-bottom:22px;
-transition:box-shadow .2s ease;
+padding:28px 30px;
+margin-bottom:24px;
+transition:box-shadow .25s ease, transform .25s ease;
+overflow:hidden;
 }
-section.step:hover{box-shadow:var(--shadow-md);}
-.step-head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px;}
+section.step::before{
+content:"";position:absolute;top:0;left:0;right:0;height:3px;
+background:linear-gradient(90deg, var(--ink) 0%, var(--gold) 55%, var(--maroon) 100%);
+opacity:0.85;
+}
+section.step:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.step-head{display:flex;align-items:baseline;gap:14px;margin-bottom:20px;}
 .step-num{
 font-family:var(--font-display);font-size:14px;font-weight:700;color:#fff;
-background:var(--ink);border:2px solid var(--gold);width:28px;height:28px;border-radius:50%;
+background:linear-gradient(145deg, var(--ink) 0%, var(--ink-soft) 100%);
+border:2px solid var(--gold);width:30px;height:30px;border-radius:50%;
 display:flex;align-items:center;justify-content:center;flex-shrink:0;
+box-shadow:0 3px 8px rgba(27,42,74,.25);
 }
 .step-head h2{font-family:var(--font-display);font-size:19px;margin:0;font-weight:700;letter-spacing:0.2px;color:var(--ink);}
 .step-head .hint{color:var(--slate);font-size:12.5px;margin-left:auto;font-style:italic;}
+.mode-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:640px){.mode-tabs{grid-template-columns:1fr;}}
+.mode-tab{
+position:relative;display:flex;align-items:center;justify-content:center;gap:11px;
+padding:15px 14px;border-radius:var(--radius);border:1.5px solid var(--line);background:#fff;
+cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .15s,background .18s;
+}
+.mode-tab input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+.mode-tab-icon{
+width:34px;height:34px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+background:var(--paper);color:var(--ink-soft);transition:background .18s,color .18s;
+}
+.mode-tab-icon svg{width:18px;height:18px;}
+.mode-tab-text{display:flex;flex-direction:column;gap:1px;text-align:left;}
+.mode-tab-title{font-family:var(--font-display);font-weight:800;font-size:14.5px;letter-spacing:0.3px;color:var(--ink);line-height:1.2;}
+.mode-tab-sub{font-family:var(--font-mono);font-size:10px;letter-spacing:0.5px;text-transform:uppercase;color:var(--slate);}
+.mode-tab:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(39,87,166,.15);transform:translateY(-1px);}
+.mode-tab:has(input:checked){
+background:linear-gradient(150deg, var(--blue) 0%, var(--blue-dark) 100%);
+border-color:var(--blue-dark);box-shadow:0 8px 20px rgba(23,59,120,.35);transform:translateY(-1px);
+}
+.mode-tab:has(input:checked) .mode-tab-title{color:#fff;}
+.mode-tab:has(input:checked) .mode-tab-sub{color:rgba(255,255,255,.78);}
+.mode-tab:has(input:checked) .mode-tab-icon{background:rgba(255,255,255,.18);color:#fff;}
 label{display:block;font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--slate);margin-bottom:6px;}
 input[type=text],input[type=date],input[type=number],input[type=password]{
-width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
+width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--radius-sm);
 font-size:14px;color:var(--ink);background:#fff;font-family:var(--font-body);
 transition:border-color .15s, box-shadow .15s;
+box-shadow:inset 0 1px 2px rgba(27,42,74,.04);
 }
+input:hover{border-color:#C9C3B0;}
 input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 @media(max-width:700px){.grid3{grid-template-columns:1fr;}}
@@ -130,7 +172,7 @@ color:var(--slate);cursor:pointer;transition:border-color .15s,background .15s,b
 table.data{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px;}
 table.data th{
 text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-family:var(--font-mono);
-color:#fff;background:var(--ink);border-bottom:2px solid var(--gold);padding:9px 10px;font-weight:600;
+color:#fff;background:linear-gradient(145deg, var(--ink-soft) 0%, var(--ink) 100%);border-bottom:2px solid var(--gold);padding:10px 10px;font-weight:600;
 }
 table.data td{padding:8px 10px;border-bottom:1px solid var(--line);}
 table.data tr:last-child td{border-bottom:none;}
@@ -140,8 +182,8 @@ table.data tr.batch-row td{background:#FBFAF7;}
 table.data tr.batch-row:hover td{background:var(--gold-soft);}
 table.data tr.batch-row td:first-child{padding-left:16px;}
 .badge{
-display:inline-block;background:var(--ink);color:#fff;font-family:var(--font-mono);
-font-size:11px;padding:3px 9px;border-radius:20px;letter-spacing:0.2px;
+display:inline-block;background:linear-gradient(145deg, var(--ink-soft) 0%, var(--ink) 100%);color:#fff;font-family:var(--font-mono);
+font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:0.2px;box-shadow:0 1px 3px rgba(27,42,74,.2);
 }
 .room-row{display:grid;grid-template-columns:1fr 110px 170px 130px 36px;gap:10px;margin-bottom:10px;align-items:end;}
 .pin-trigger{
@@ -170,18 +212,19 @@ height:38px;cursor:pointer;font-size:15px;transition:background .15s,border-colo
 }
 .remove-btn:hover{background:var(--red-soft);border-color:var(--red);}
 button.action{
-background:var(--ink);color:#fff;border:1px solid var(--ink);padding:11px 22px;border-radius:var(--radius);
+background:linear-gradient(145deg, var(--ink-soft) 0%, var(--ink) 100%);color:#fff;border:1px solid var(--ink);
+padding:11px 24px;border-radius:var(--radius-sm);
 font-size:13.5px;letter-spacing:0.4px;cursor:pointer;font-weight:600;font-family:var(--font-body);
-box-shadow:var(--shadow-sm);transition:background .15s,box-shadow .15s,transform .1s;
+box-shadow:var(--shadow-sm);transition:background .2s,box-shadow .2s,transform .15s;
 }
-button.action:hover{background:var(--ink-soft);box-shadow:var(--shadow-md);transform:translateY(-1px);}
-button.action:active{transform:translateY(0);}
+button.action:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+button.action:active{transform:translateY(0);box-shadow:var(--shadow-sm);}
 button.action:disabled{background:#B7BEC9;border-color:#B7BEC9;cursor:not-allowed;box-shadow:none;transform:none;}
 button.ghost{
-background:none;border:1px solid var(--ink);color:var(--ink);padding:10px 18px;border-radius:var(--radius);
-cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-body);transition:background .15s,color .15s;
+background:#fff;border:1.5px solid var(--ink);color:var(--ink);padding:9.5px 18px;border-radius:var(--radius-sm);
+cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-body);transition:background .18s,color .18s,box-shadow .18s,transform .15s;
 }
-button.ghost:hover{background:var(--ink);color:#fff;}
+button.ghost:hover{background:var(--ink);color:#fff;box-shadow:var(--shadow-sm);transform:translateY(-1px);}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .row-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
 .status{font-size:13px;margin-top:10px;}
@@ -293,16 +336,32 @@ body{background:#fff;}
 <h2>Exam details</h2>
 <div class="hint">Shown on the printed sheets</div>
 </div>
-<div style="margin-bottom:18px;">
+<div style="margin-bottom:20px;">
 <label>Test type</label>
-<div style="display:flex;gap:22px;">
-<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
-<input type="radio" name="testType" id="testTypeOffline" value="offline" checked style="width:16px;height:16px;margin:0;">
-Offline test (halls)
+<div class="mode-tabs">
+<label class="mode-tab">
+<input type="radio" name="testType" id="testTypeOffline" value="offline" checked>
+<span class="mode-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg></span>
+<span class="mode-tab-text">
+<span class="mode-tab-title">Offline</span>
+<span class="mode-tab-sub">Test (Halls)</span>
+</span>
 </label>
-<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
-<input type="radio" name="testType" id="testTypeOnline" value="online" style="width:16px;height:16px;margin:0;">
-Online test (time slots)
+<label class="mode-tab">
+<input type="radio" name="testType" id="testTypeOnline" value="online">
+<span class="mode-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+<span class="mode-tab-text">
+<span class="mode-tab-title">Online</span>
+<span class="mode-tab-sub">Test (Time Slots)</span>
+</span>
+</label>
+<label class="mode-tab">
+<input type="radio" name="testType" id="testTypeAdmission" value="admission">
+<span class="mode-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></span>
+<span class="mode-tab-text">
+<span class="mode-tab-title">I-SAT</span>
+<span class="mode-tab-sub">Admission Test</span>
+</span>
 </label>
 </div>
 </div>
@@ -322,7 +381,7 @@ Online test (time slots)
 </div>
 </section>
 <!-- STEP 2: Upload -->
-<section class="step no-print">
+<section class="step no-print" id="uploadSection">
 <div class="step-head">
 <div class="step-num">2</div>
 <h2>Upload student list</h2>
@@ -353,6 +412,32 @@ Online test (time slots)
 <div class="status" id="transportStatus"></div>
 </div>
 </section>
+<!-- STEP 2 (admission test): manual class-wise counts -->
+<section class="step no-print" id="admissionEntrySection" style="display:none;">
+<div class="step-head">
+<div class="step-num">2</div>
+<h2>Class-wise student counts</h2>
+<div class="hint">No file to upload — enter counts by hand and split each class across the two slots</div>
+</div>
+<div class="grid3" style="margin-bottom:18px;">
+<div>
+<label for="admSlot1Timing">Slot 1 timing</label>
+<input type="text" id="admSlot1Timing" value="10:00 AM – 12:00 PM">
+</div>
+<div>
+<label for="admSlot2Timing">Slot 2 timing</label>
+<input type="text" id="admSlot2Timing" value="1:00 PM – 3:00 PM">
+</div>
+</div>
+<table class="data" id="admClassTable">
+<thead><tr><th>Class</th><th style="width:130px;">Slot 1 count</th><th style="width:130px;">Slot 2 count</th><th style="width:36px;"></th></tr></thead>
+<tbody id="admClassRows"></tbody>
+</table>
+<div class="row-actions">
+<button class="ghost" id="admAddClassBtn" type="button">+ Add class</button>
+</div>
+<div class="status" id="admClassStatus"></div>
+</section>
 <!-- STEP 3: Rooms -->
 <section class="step no-print" id="hallsSection">
 <div class="step-head">
@@ -374,6 +459,23 @@ Online test (time slots)
 <input type="file" id="loadRoomsInput" accept=".json" style="display:none;">
 </div>
 <div class="status" id="roomStatus"></div>
+</section>
+<!-- STEP 3 (admission test): Halls (simple, no pinning) -->
+<section class="step no-print" id="admissionHallsSection" style="display:none;">
+<div class="step-head">
+<div class="step-num">3</div>
+<h2>Halls</h2>
+<div class="hint">Same halls list is used for either slot — 2 classes per hall, balanced 50/50, never same grade together</div>
+</div>
+<div class="status" id="admCapacitySummary" style="margin-bottom:6px;"></div>
+<div class="row-actions" style="margin-bottom:16px;">
+<button class="ghost" id="admAutoAssignBtn" type="button">Auto-assign halls</button>
+<div class="status" id="admHallStatus" style="margin-top:0;"></div>
+</div>
+<div id="admHallRows"></div>
+<div class="row-actions">
+<button class="ghost" id="admAddHallBtn" type="button">+ Add hall</button>
+</div>
 </section>
 <!-- STEP 3 (online): Slots -->
 <section class="step no-print" id="slotsSection" style="display:none;">
@@ -417,6 +519,26 @@ Online test (time slots)
 <button class="ghost" id="slotExcelBtn" type="button" style="display:none;">Download Slot Assignment Excel</button>
 <button class="ghost" id="slotAttendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
 </div>
+<div class="no-print" id="admSlotChoiceWrap" style="display:none;margin-bottom:16px;">
+<label>Generate for which slot?</label>
+<div style="display:flex;gap:22px;">
+<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
+<input type="radio" name="admSlotChoice" id="admSlotChoiceSlot1" value="slot1" checked style="width:16px;height:16px;margin:0;"> Slot 1
+</label>
+<label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:14px;color:var(--ink);letter-spacing:0;">
+<input type="radio" name="admSlotChoice" id="admSlotChoiceSlot2" value="slot2" style="width:16px;height:16px;margin:0;"> Slot 2
+</label>
+</div>
+<div class="status" style="margin-top:6px;">Only the selected slot is generated/printed — the two slots run at different times, so halls aren't split between them.</div>
+</div>
+<div class="row-actions" id="admissionGenerateControls" style="display:none;">
+<button class="action" id="admGenerateBtn" type="button">Generate seating plan</button>
+<button class="ghost" id="admReshuffleBtn" type="button" style="display:none;">Reshuffle</button>
+<button class="ghost" id="admPrintBtn" type="button" style="display:none;">Print sheets</button>
+<button class="ghost" id="admExcelBtn" type="button" style="display:none;">Download Seating Excel</button>
+<button class="ghost" id="admAttendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
+<button class="ghost" id="admCouponsBtn" type="button" style="display:none;">Download Hall Tickets (Coupons)</button>
+</div>
 <div class="status" id="genStatus"></div>
 </section>
 <div class="print-meta">
@@ -424,6 +546,7 @@ Online test (time slots)
 <div class="line" id="printExam"></div>
 </div>
 <div id="results"></div>
+<div id="admissionResults"></div>
 </div>
 <script>
 (function(){
@@ -516,7 +639,27 @@ let selectedBatches = new Set(); // individual batch names currently ticked
 let lastResults = null; // for reshuffle without re-reading rooms
 let transportRaw = []; // {name, roll} parsed from the transport students file
 let lastSlotResults = null; // {slot1, slot2, slot3, unmatchedTransport}
-let testType = 'offline'; // 'offline' | 'online'
+let testType = 'offline'; // 'offline' | 'online' | 'admission'
+let lastAdmissionResults = null; // {slotKey,label,timing,roomResults,leftover}
+// Pre-filled halls — the institute's actual room list, loaded by default
+// every time the page opens (both for Offline mode's Step 3 and for
+// Admission Test's hall list). Edit this array (or use "Load saved room
+// list" in the app) if the hall list ever changes.
+const DEFAULT_HALLS = [
+{name:'Hall No. 1', capacity:48},
+{name:'Hall No. 2', capacity:48},
+{name:'Hall No. 3', capacity:48},
+{name:'Hall No. 4', capacity:48},
+{name:'Hall No. 5', capacity:36},
+{name:'Hall No. 8', capacity:48},
+{name:'Hall No. 9', capacity:75},
+{name:'Hall No. 10', capacity:48},
+{name:'Hall No. 11', capacity:48},
+{name:'Hall No. 12', capacity:48},
+{name:'Hall No. 13', capacity:48},
+{name:'Hall No. 14', capacity:39},
+{name:'Hall No. 15', capacity:60}
+];
 const fileInput = document.getElementById('fileInput');
 const fileName = document.getElementById('fileName');
 const uploadStatus = document.getElementById('uploadStatus');
@@ -549,6 +692,28 @@ const reshuffleSlotsBtn = document.getElementById('reshuffleSlotsBtn');
 const slotExcelBtn = document.getElementById('slotExcelBtn');
 const slotAttendanceBtn = document.getElementById('slotAttendanceBtn');
 const slotCapacityInput = document.getElementById('slotCapacity');
+const uploadSection = document.getElementById('uploadSection');
+const admissionEntrySection = document.getElementById('admissionEntrySection');
+const admissionHallsSection = document.getElementById('admissionHallsSection');
+const admissionGenerateControls = document.getElementById('admissionGenerateControls');
+const admSlotChoiceWrap = document.getElementById('admSlotChoiceWrap');
+const admissionResults = document.getElementById('admissionResults');
+const admClassRows = document.getElementById('admClassRows');
+const admAddClassBtn = document.getElementById('admAddClassBtn');
+const admClassStatus = document.getElementById('admClassStatus');
+const admSlot1Timing = document.getElementById('admSlot1Timing');
+const admSlot2Timing = document.getElementById('admSlot2Timing');
+const admHallRows = document.getElementById('admHallRows');
+const admAddHallBtn = document.getElementById('admAddHallBtn');
+const admAutoAssignBtn = document.getElementById('admAutoAssignBtn');
+const admCapacitySummary = document.getElementById('admCapacitySummary');
+const admHallStatus = document.getElementById('admHallStatus');
+const admGenerateBtn = document.getElementById('admGenerateBtn');
+const admReshuffleBtn = document.getElementById('admReshuffleBtn');
+const admPrintBtn = document.getElementById('admPrintBtn');
+const admExcelBtn = document.getElementById('admExcelBtn');
+const admAttendanceBtn = document.getElementById('admAttendanceBtn');
+const admCouponsBtn = document.getElementById('admCouponsBtn');
 function getSlotCapacity(){
 const v = parseInt(slotCapacityInput.value, 10);
 return (v > 0) ? v : 58;
@@ -565,21 +730,34 @@ slotsSection.style.display = type === 'online' ? '' : 'none';
 transportUploadContainer.style.display = type === 'online' ? '' : 'none';
 offlineGenerateControls.style.display = type === 'offline' ? '' : 'none';
 onlineGenerateControls.style.display = type === 'online' ? '' : 'none';
+uploadSection.style.display = type === 'admission' ? 'none' : '';
+admissionEntrySection.style.display = type === 'admission' ? '' : 'none';
+admissionHallsSection.style.display = type === 'admission' ? '' : 'none';
+admissionGenerateControls.style.display = type === 'admission' ? '' : 'none';
+admSlotChoiceWrap.style.display = type === 'admission' ? '' : 'none';
 generateHint.textContent = type === 'offline'
 ? 'Random shuffle · max 2 classes per hall'
-: 'Transport students fixed to Slot 1 · rest shuffled across Slots 2 & 3';
+: (type === 'online'
+? 'Transport students fixed to Slot 1 · rest shuffled across Slots 2 & 3'
+: 'Manual counts · classes mixed so the same class never sits next to itself');
 results.innerHTML = '';
+admissionResults.innerHTML = '';
 lastResults = null;
 lastSlotResults = null;
+lastAdmissionResults = null;
 genStatus.className = 'status';
 genStatus.textContent = '';
+if (type === 'admission' && admHallRows.children.length === 0) DEFAULT_HALLS.forEach(h => addAdmHallRow(h.name, h.capacity));
+if (type === 'admission' && admClassRows.children.length === 0) addAdmClassRow();
 }
 const MODE_SWITCH_KEY = 'examSeatingPlanPendingMode';
+function modeLabel(t){ return t === 'online' ? 'Online' : (t === 'admission' ? 'Admission Test' : 'Offline'); }
+function modeRadioId(t){ return t === 'online' ? 'testTypeOnline' : (t === 'admission' ? 'testTypeAdmission' : 'testTypeOffline'); }
 function handleModeSwitch(newType){
 const previousType = testType;
-const previousRadio = document.getElementById(previousType === 'online' ? 'testTypeOnline' : 'testTypeOffline');
+const previousRadio = document.getElementById(modeRadioId(previousType));
 askConfirm(
-`Shift to ${newType === 'online' ? 'Online' : 'Offline'} mode?`,
+`Shift to ${modeLabel(newType)} mode?`,
 'This will refresh the page and switch to the other mode.',
 () => {
 try { sessionStorage.setItem(MODE_SWITCH_KEY, newType); } catch(e){}
@@ -590,14 +768,15 @@ location.reload();
 }
 document.getElementById('testTypeOffline').addEventListener('change', () => handleModeSwitch('offline'));
 document.getElementById('testTypeOnline').addEventListener('change', () => handleModeSwitch('online'));
+document.getElementById('testTypeAdmission').addEventListener('change', () => handleModeSwitch('admission'));
 // If a mode switch was just confirmed (see handleModeSwitch above), restore
 // that choice after the reload it triggers.
 (function restorePendingMode(){
 let pending = null;
 try { pending = sessionStorage.getItem(MODE_SWITCH_KEY); } catch(e){}
-if (pending === 'online' || pending === 'offline'){
+if (pending === 'online' || pending === 'offline' || pending === 'admission'){
 try { sessionStorage.removeItem(MODE_SWITCH_KEY); } catch(e){}
-document.getElementById(pending === 'online' ? 'testTypeOnline' : 'testTypeOffline').checked = true;
+document.getElementById(modeRadioId(pending)).checked = true;
 setTestType(pending);
 }
 })();
@@ -752,24 +931,6 @@ if (!cb.checked && !cb.disabled) cb.disabled = atMax;
 function refreshAllPinSelects(){
 roomRows.querySelectorAll('.room-row').forEach(row => populatePinPanel(row));
 }
-// Pre-filled halls — the institute's actual room list, loaded by default
-// every time the page opens. Edit this array (or use "Load saved room
-// list" in the app) if the hall list ever changes.
-const DEFAULT_HALLS = [
-{name:'Hall No. 1', capacity:48},
-{name:'Hall No. 2', capacity:48},
-{name:'Hall No. 3', capacity:48},
-{name:'Hall No. 4', capacity:48},
-{name:'Hall No. 5', capacity:36},
-{name:'Hall No. 8', capacity:48},
-{name:'Hall No. 9', capacity:75},
-{name:'Hall No. 10', capacity:48},
-{name:'Hall No. 11', capacity:48},
-{name:'Hall No. 12', capacity:48},
-{name:'Hall No. 13', capacity:48},
-{name:'Hall No. 14', capacity:39},
-{name:'Hall No. 15', capacity:60}
-];
 DEFAULT_HALLS.forEach(h => addRoomRow(h.name, h.capacity));
 addRoomBtn.addEventListener('click', () => addRoomRow());
 function updateSelectedSummary(){
@@ -856,13 +1017,50 @@ autoHallsStatus.className = 'status err';
 autoHallsStatus.textContent = 'Upload a student list and tick at least one class first.';
 return;
 }
-const sortedRows = shuffle(rows).sort((a, b) => {
+// Pinned halls (Step 3 "pin class/batch to a hall") are reserved
+// exclusively for their pinned students — any of their seats beyond
+// that pin's own headcount are deliberately left EMPTY, never
+// backfilled by the general pool (see allocate()). Counting a pinned
+// hall's FULL capacity toward "enough capacity for everyone" therefore
+// overstates what's actually usable, causing this function to under-pick
+// unpinned halls — the shortfall then forces extra classes into the
+// single catch-all hall on "All Shuffle" re-runs. Fix: always keep
+// pinned halls ticked (their pinned students can only sit there), but
+// only count their REAL pinned headcount — not raw capacity — toward
+// the total needed.
+function pinnedHeadcount(row){
+let count = 0;
+(row.pins || []).forEach(pin => {
+students.forEach(s => {
+if (pin.type === 'class' && s.groupKey === pin.name) count++;
+else if (pin.type === 'batch' && s.batch === pin.name) count++;
+});
+});
+const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
+return Math.min(count, cap);
+}
+const pinnedRows = rows.filter(row => row.pins && row.pins.length);
+const unpinnedRows = rows.filter(row => !(row.pins && row.pins.length));
+let cumulative = 0;
+let usedCount = 0;
+pinnedRows.forEach(row => {
+const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
+const useBox = row.querySelector('.roomUse');
+if (cap > 0){
+useBox.checked = true;
+row.classList.remove('disabled');
+cumulative += pinnedHeadcount(row);
+usedCount++;
+} else {
+useBox.checked = false;
+row.classList.add('disabled');
+}
+});
+const sortedRows = shuffle(unpinnedRows).sort((a, b) => {
 const capA = parseInt(a.querySelector('.roomCap').value, 10) || 0;
 const capB = parseInt(b.querySelector('.roomCap').value, 10) || 0;
 return capB - capA;
 });
-let cumulative = 0;
-let usedCount = 0;
 sortedRows.forEach(row => {
 const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
 const useBox = row.querySelector('.roomUse');
@@ -880,7 +1078,7 @@ updateCapacitySummary();
 updateSelectedSummary();
 autoHallsMode = true;
 autoHallsStatus.className = cumulative >= needed ? 'status ok' : 'status err';
-autoHallsStatus.textContent = `Auto-selected ${usedCount} hall(s), total capacity ${cumulative}, for ${needed} student(s).${cumulative < needed ? ` Still short by ${needed - cumulative} — add more capacity.` : ''}`;
+autoHallsStatus.textContent = `Auto-selected ${usedCount} hall(s), usable capacity ${cumulative}, for ${needed} student(s).${cumulative < needed ? ` Still short by ${needed - cumulative} — add more capacity.` : ''}`;
 }
 const saveRoomsBtn = document.getElementById('saveRoomsBtn');
 const loadRoomsBtn = document.getElementById('loadRoomsBtn');
@@ -1404,11 +1602,20 @@ if (!randomizeClasses) return candidates[0];
 // "All Shuffle": normal reshuffle keeps re-picking the single objectively
 // best pairing every time (same class sizes in, same best answer out) —
 // which class ends up with which is a deliberate choice here instead:
-// pick randomly among every pairing within a small tolerance of the best
-// fit, so which classes share a hall can genuinely change too, not just
-// which students.
-const tolerance = 4;
-const goodEnough = candidates.filter(c => c.shortfall <= candidates[0].shortfall + tolerance);
+// pick randomly among every TIED-best pairing (same shortfall as the
+// best one found), so which classes share a hall can genuinely change
+// too, not just which students. This used to allow picking a pairing up
+// to 4 seats WORSE than the best per hall (for more variety) — but that
+// small per-hall slack added up fast across many halls, pushing a lot
+// more total "honest shortfall" into the mop-up/catch-all/exhaustive
+// passes than a normal Generate ever produces — which is what caused
+// several halls to end up skewed (e.g. 29/31 instead of 30/30) and
+// flagged as overflow after "All Shuffle". Sticking to true ties keeps
+// total capacity usage identical to a normal Generate while still
+// randomizing which pair of classes shares each hall (processing order
+// is shuffled too, so which pairs tie for "best" already varies a lot
+// run to run).
+const goodEnough = candidates.filter(c => c.shortfall === candidates[0].shortfall);
 return shuffle(goodEnough)[0];
 }
 function allocate(rooms, randomizeClasses){
@@ -1694,6 +1901,14 @@ Add more capacity or another hall, or manually adjust each student into a hall b
 }
 roomResults.forEach(r => {
 const manualEntries = r.seatEntries.filter(e => e.manual);
+const pendingMoved = manualEntries.filter(e => !e.movedFromHall);
+const hallMovedGroups = {};
+manualEntries.filter(e => e.movedFromHall).forEach(e => {
+const key = e.movedFromHall + '|' + e.student.groupKey;
+if (!hallMovedGroups[key]) hallMovedGroups[key] = {fromHall: e.movedFromHall, className: e.student.groupKey, count: 0};
+hallMovedGroups[key].count++;
+});
+const hallMovedList = Object.values(hallMovedGroups);
 html += `<div class="room-card">
 <h3>${r.room.name}${r.pinned ? ' <span class="badge" style="background:var(--maroon);font-size:10px;vertical-align:middle;">PINNED</span>' : ''}</h3>
 <div class="meta">Capacity ${r.room.capacity} &nbsp;·&nbsp; Seated ${r.used}</div>
@@ -1703,10 +1918,11 @@ return `<span class="badge">${b}: ${clsTotal ? clsTotal.count : 0}</span>`;
 }).join('')}</div>
 <div class="batch-breakdown">${r.batchBreakdown.map(b => `<span class="mini-badge">${b.name}: ${b.count}</span>`).join('')}</div>
 ${r.overflowed && !r.manuallyAdjusted ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
-${manualEntries.length ? `<div class="overflow-note no-print">Manually moved in from pending: ${manualEntries.map(e => {
+${pendingMoved.length ? `<div class="overflow-note no-print">Manually moved in from pending: ${pendingMoved.map(e => {
 const seatIdx = r.seatEntries.indexOf(e);
 return `<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 8px 2px 0;">${e.student.name}<button type="button" class="removeManualBtn" data-hall="${r.room.name.replace(/"/g,'&quot;')}" data-seat-idx="${seatIdx}" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:10px;width:16px;height:16px;line-height:1;font-size:11px;cursor:pointer;padding:0;">&times;</button></span>`;
 }).join('')}</div>` : ''}
+${hallMovedList.length ? `<div class="overflow-note no-print">Moved in from other hall(s): ${hallMovedList.map(g => `<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 8px 2px 0;">${g.count} × ${g.className} (from ${g.fromHall})<button type="button" class="undoGroupMoveBtn" data-to="${r.room.name.replace(/"/g,'&quot;')}" data-from="${g.fromHall.replace(/"/g,'&quot;')}" data-class="${g.className.replace(/"/g,'&quot;')}" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:10px;padding:0 7px;line-height:1.7;font-size:11px;cursor:pointer;">Undo</button></span>`).join('')}</div>` : ''}
 <table class="data">
 <thead><tr><th>Seat</th><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
 <tbody>
@@ -1744,7 +1960,44 @@ return `<tr>
 </table>
 </div>`;
 }
+const smallGroups = getSmallClassGroups(roomResults, 5);
+if (smallGroups.length){
+html += `<div class="room-card">
+<h3>Small Class Groups <span style="color:var(--slate);font-weight:400;font-size:13px;">(5 or fewer of a class landed in a hall — move them into a hall that already has that class, even if it's full)</span></h3>
+<table class="data">
+<thead><tr><th>Hall</th><th>Class</th><th>Count</th><th>Move to</th></tr></thead>
+<tbody>
+${smallGroups.map(g => {
+const destRooms = roomResults.filter(r2 => !r2.pinned && r2 !== g.room && r2.classBreakdown.some(c => c.name === g.className));
+const options = destRooms.map(r2 => {
+const cls = r2.classBreakdown.find(c => c.name === g.className);
+const spare = r2.room.capacity - r2.used;
+return `<option value="${r2.room.name.replace(/"/g,'&quot;')}">${r2.room.name} (has ${cls.count}, ${spare > 0 ? `spare ${spare}` : 'FULL'})</option>`;
+}).join('');
+return `<tr>
+<td>${g.room.room.name}</td><td>${g.className}</td><td>${g.count}</td>
+<td>${options ? `<select class="smallGroupMoveSelect" data-from="${g.room.room.name.replace(/"/g,'&quot;')}" data-class="${g.className.replace(/"/g,'&quot;')}"><option value="">— Choose hall —</option>${options}</select>` : '<span style="color:var(--slate);font-size:12px;">No other hall has this class yet</span>'}</td>
+</tr>`;
+}).join('')}
+</tbody>
+</table>
+</div>`;
+}
 results.innerHTML = html;
+results.querySelectorAll('.smallGroupMoveSelect').forEach(sel => {
+sel.addEventListener('change', () => {
+const from = sel.dataset.from;
+const cls = sel.dataset.class;
+const to = sel.value;
+if (!to) return;
+moveClassGroupToHall(from, cls, to);
+});
+});
+results.querySelectorAll('.undoGroupMoveBtn').forEach(btn => {
+btn.addEventListener('click', () => {
+undoClassGroupMove(btn.dataset.to, btn.dataset.class, btn.dataset.from);
+});
+});
 results.querySelectorAll('.pendingHallSelect').forEach(sel => {
 sel.addEventListener('change', () => {
 const idx = parseInt(sel.dataset.idx, 10);
@@ -1825,6 +2078,76 @@ lastResults.leftoverStudents.push(student);
 const counts = {};
 lastResults.leftoverStudents.forEach(s => { counts[s.batch] = (counts[s.batch]||0) + 1; });
 lastResults.leftover = Object.keys(counts).map(b => ({batch: b, count: counts[b]}));
+renderResults(lastResults);
+}
+// Rebuilds a room's batches/batchBreakdown/classBreakdown/used entirely
+// from its current seatEntries — used after manually moving a class
+// group in or out of a hall, instead of patching the aggregate counters
+// by hand (which is easy to get subtly wrong).
+function recomputeRoomAggregates(room){
+const batchCounts = {};
+const classCounts = {};
+room.seatEntries.forEach(e => {
+batchCounts[e.student.batch] = (batchCounts[e.student.batch]||0) + 1;
+classCounts[e.student.groupKey] = (classCounts[e.student.groupKey]||0) + 1;
+});
+room.batchBreakdown = Object.keys(batchCounts).map(b => ({name:b, count:batchCounts[b]})).sort((a,b) => b.count - a.count);
+room.classBreakdown = Object.keys(classCounts).map(c => ({name:c, count:classCounts[c]})).sort((a,b) => b.count - a.count);
+room.batches = room.classBreakdown.map(c => c.name);
+room.used = room.seatEntries.length;
+}
+// After Generate/Shuffle, a class can end up thinly split off into a
+// hall with only a handful of its students (mop-up/catch-all topping up
+// spare seats). This finds every such small (<=threshold) class group so
+// they can be manually consolidated into a hall that already has more
+// of that class.
+function getSmallClassGroups(roomResults, threshold){
+const out = [];
+roomResults.forEach(r => {
+r.classBreakdown.forEach(c => {
+if (c.count > 0 && c.count <= threshold) out.push({room: r, className: c.name, count: c.count});
+});
+});
+return out;
+}
+// Moves an ENTIRE small class group from one hall to another that
+// already has that class. Ignores destination capacity on purpose — the
+// person doing this has decided it's fine (these are small, single-digit
+// groups), same as the Pending Students manual-assign above. Never
+// touches pinned halls (source or destination) — a pin's exclusivity is
+// not something this tool should quietly break.
+function moveClassGroupToHall(fromHallName, className, toHallName){
+if (!lastResults) return;
+const fromRoom = lastResults.roomResults.find(r => r.room.name === fromHallName);
+const toRoom = lastResults.roomResults.find(r => r.room.name === toHallName);
+if (!fromRoom || !toRoom || fromRoom === toRoom || fromRoom.pinned || toRoom.pinned) return;
+const moving = fromRoom.seatEntries.filter(e => e.student.groupKey === className);
+if (!moving.length) return;
+fromRoom.seatEntries = fromRoom.seatEntries.filter(e => e.student.groupKey !== className);
+recomputeRoomAggregates(fromRoom);
+moving.forEach(e => {
+e.manual = true;
+e.movedFromHall = fromHallName;
+e.seatInRow = null;
+toRoom.seatEntries.push(e);
+});
+recomputeRoomAggregates(toRoom);
+toRoom.manuallyAdjusted = true;
+renderResults(lastResults);
+}
+// Undoes a moveClassGroupToHall — sends that group back to its original
+// hall (e.g. a misclick), same spirit as the Pending Students undo.
+function undoClassGroupMove(toHallName, className, fromHallName){
+if (!lastResults) return;
+const toRoom = lastResults.roomResults.find(r => r.room.name === toHallName);
+const fromRoom = lastResults.roomResults.find(r => r.room.name === fromHallName);
+if (!toRoom || !fromRoom) return;
+const moving = toRoom.seatEntries.filter(e => e.manual && e.movedFromHall === fromHallName && e.student.groupKey === className);
+if (!moving.length) return;
+toRoom.seatEntries = toRoom.seatEntries.filter(e => !(e.manual && e.movedFromHall === fromHallName && e.student.groupKey === className));
+recomputeRoomAggregates(toRoom);
+moving.forEach(e => { delete e.manual; delete e.movedFromHall; fromRoom.seatEntries.push(e); });
+recomputeRoomAggregates(fromRoom);
 renderResults(lastResults);
 }
 function runGeneration(randomizeClasses){
@@ -2484,6 +2807,414 @@ resetBtn.addEventListener('click', () => { resetModalOverlay.style.display = 'fl
 resetConfirmNo.addEventListener('click', () => { resetModalOverlay.style.display = 'none'; });
 resetConfirmYes.addEventListener('click', () => { location.reload(); });
 resetModalOverlay.addEventListener('click', (e) => { if (e.target === resetModalOverlay) resetModalOverlay.style.display = 'none'; });
+
+// ---- Admission Test mode --------------------------------------------
+// No real student list exists for this mode — counts are entered by
+// hand per class, split across the two admission-test slots. Students
+// are synthetic (token numbers only, no names); the same halls are
+// reused for both slots. Seating order is built so that no two
+// students from the same "grade group" (e.g. "11th NM" and "11th Med"
+// both belong to grade group "11th") ever end up next to each other
+// in a hall's roster.
+function escapeHtml(str){
+return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function admGradeGroup(className){
+const trimmed = (className || '').trim();
+const leadingNum = trimmed.match(/^\d+[a-zA-Z]*/);
+if (leadingNum) return leadingNum[0].toLowerCase();
+const firstWord = trimmed.split(/\s+/)[0] || trimmed;
+return firstWord.toLowerCase();
+}
+function updateAdmClassSummary(){
+const classes = getAdmClasses();
+const s1 = classes.reduce((s,c) => s + c.slot1, 0);
+const s2 = classes.reduce((s,c) => s + c.slot2, 0);
+admClassStatus.textContent = classes.length
+? `Slot 1: ${s1} students · Slot 2: ${s2} students · Total: ${s1 + s2}`
+: 'Add at least one class row with a Slot 1 or Slot 2 count.';
+}
+function addAdmClassRow(name, s1, s2){
+const row = document.createElement('tr');
+row.innerHTML = `
+<td><input type="text" class="admClassName" placeholder="e.g. 11th NM" value="${name ? escapeHtml(name) : ''}"></td>
+<td><input type="number" class="admSlot1Count" min="0" value="${s1 != null ? s1 : 0}"></td>
+<td><input type="number" class="admSlot2Count" min="0" value="${s2 != null ? s2 : 0}"></td>
+<td><button type="button" class="remove-btn" title="Remove class">✕</button></td>
+`;
+admClassRows.appendChild(row);
+row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateAdmClassSummary(); });
+row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateAdmClassSummary));
+updateAdmClassSummary();
+}
+function getAdmClasses(){
+return Array.from(admClassRows.children).map(row => ({
+name: row.querySelector('.admClassName').value.trim(),
+slot1: parseInt(row.querySelector('.admSlot1Count').value, 10) || 0,
+slot2: parseInt(row.querySelector('.admSlot2Count').value, 10) || 0
+})).filter(c => c.name && (c.slot1 > 0 || c.slot2 > 0));
+}
+admAddClassBtn.addEventListener('click', () => addAdmClassRow());
+function admSelectedSlotKey(){
+const el = document.getElementById('admSlotChoiceSlot2');
+return (el && el.checked) ? 'slot2' : 'slot1';
+}
+function admNeededForSelectedSlot(){
+const classes = getAdmClasses();
+const slotKey = admSelectedSlotKey();
+return classes.reduce((s,c) => s + (slotKey === 'slot2' ? c.slot2 : c.slot1), 0);
+}
+function updateAdmCapacitySummary(){
+const rows = Array.from(admHallRows.querySelectorAll('.room-row'));
+const usedRows = rows.filter(row => row.querySelector('.admHallUse').checked
+&& (parseInt(row.querySelector('.admHallCap').value, 10) || 0) > 0);
+const total = usedRows.reduce((s,row) => s + (parseInt(row.querySelector('.admHallCap').value, 10) || 0), 0);
+if (!usedRows.length){
+admCapacitySummary.className = 'status';
+admCapacitySummary.textContent = 'No halls ticked yet.';
+return;
+}
+const needed = admNeededForSelectedSlot();
+const slotLabel = admSelectedSlotKey() === 'slot2' ? 'Slot 2' : 'Slot 1';
+let text = `Ticked: ${usedRows.length} hall(s), total capacity ${total}.`;
+if (needed){
+const diff = total - needed;
+if (diff < 0){ admCapacitySummary.className = 'status err'; text += ` Short by ${-diff} seat(s) for ${slotLabel}.`; }
+else { admCapacitySummary.className = 'status ok'; text += diff > 0 ? ` ${diff} seat(s) spare (${slotLabel}).` : ` Exact match (${slotLabel}).`; }
+} else {
+admCapacitySummary.className = 'status';
+}
+admCapacitySummary.textContent = text;
+}
+function addAdmHallRow(name, cap, used){
+const row = document.createElement('div');
+row.className = 'room-row';
+row.style.gridTemplateColumns = '1fr 140px 170px 40px';
+row.innerHTML = `
+<div><label>Hall No.</label><input type="text" class="admHallName" placeholder="e.g. Hall 101" value="${name ? escapeHtml(name) : ''}"></div>
+<div><label>Capacity</label><input type="number" class="admHallCap" min="1" value="${cap || ''}"></div>
+<div class="use-toggle"><input type="checkbox" class="admHallUse" ${used === false ? '' : 'checked'}><span>Use for this test</span></div>
+<button type="button" class="remove-btn" title="Remove hall">✕</button>
+`;
+admHallRows.appendChild(row);
+row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateAdmCapacitySummary(); });
+const useBox = row.querySelector('.admHallUse');
+useBox.addEventListener('change', () => { row.classList.toggle('disabled', !useBox.checked); updateAdmCapacitySummary(); });
+row.querySelectorAll('input[type=text],input[type=number]').forEach(inp => inp.addEventListener('input', updateAdmCapacitySummary));
+updateAdmCapacitySummary();
+}
+function getAdmHalls(){
+return Array.from(admHallRows.querySelectorAll('.room-row'))
+.filter(row => row.querySelector('.admHallUse').checked)
+.map(row => ({
+name: row.querySelector('.admHallName').value.trim() || 'Hall',
+capacity: parseInt(row.querySelector('.admHallCap').value, 10) || 0
+})).filter(h => h.capacity > 0);
+}
+admAddHallBtn.addEventListener('click', () => addAdmHallRow());
+admAutoAssignBtn.addEventListener('click', admAutoSelectHalls);
+function admAutoSelectHalls(){
+const rows = Array.from(admHallRows.querySelectorAll('.room-row'));
+if (!rows.length){ admHallStatus.className = 'status err'; admHallStatus.textContent = 'No halls to select from — add at least one hall first.'; return; }
+const needed = admNeededForSelectedSlot();
+const slotLabel = admSelectedSlotKey() === 'slot2' ? 'Slot 2' : 'Slot 1';
+if (!needed){ admHallStatus.className = 'status err'; admHallStatus.textContent = `Add a ${slotLabel} class count first.`; return; }
+const sortedRows = shuffle(rows).sort((a,b) => {
+const capA = parseInt(a.querySelector('.admHallCap').value, 10) || 0;
+const capB = parseInt(b.querySelector('.admHallCap').value, 10) || 0;
+return capB - capA;
+});
+let cumulative = 0, usedCount = 0;
+sortedRows.forEach(row => {
+const cap = parseInt(row.querySelector('.admHallCap').value, 10) || 0;
+const useBox = row.querySelector('.admHallUse');
+if (cumulative < needed && cap > 0){ useBox.checked = true; row.classList.remove('disabled'); cumulative += cap; usedCount++; }
+else { useBox.checked = false; row.classList.add('disabled'); }
+});
+updateAdmCapacitySummary();
+admHallStatus.className = cumulative >= needed ? 'status ok' : 'status err';
+admHallStatus.textContent = `Auto-selected ${usedCount} hall(s), total capacity ${cumulative}, for ${needed} student(s) (${slotLabel}).${cumulative < needed ? ` Still short by ${needed - cumulative} — add more capacity.` : ''}`;
+}
+function buildAdmissionClassPool(classes, slotKey){
+return classes.map(c => {
+const count = slotKey === 'slot1' ? c.slot1 : c.slot2;
+if (!count) return null;
+const group = admGradeGroup(c.name);
+const students = [];
+for (let i = 1; i <= count; i++){
+students.push({
+cls: c.name,
+group,
+token: `${c.name.replace(/\s+/g,'').toUpperCase()}-${slotKey === 'slot1' ? 'S1' : 'S2'}-${String(i).padStart(3,'0')}`
+});
+}
+return {name: c.name, group, students};
+}).filter(Boolean);
+}
+// Same idea as the offline hall-pairing logic (bestPairForRoom): checks
+// every ordered pair of classes and picks whichever pair keeps the split
+// closest to a balanced 50/50 for this hall's capacity — but pairs from
+// the same grade group (e.g. "11th NM" + "11th Med") are never allowed,
+// so the same grade never shares a hall with itself.
+function admBestPairForRoom(active, capacity){
+const targetA = Math.ceil(capacity / 2);
+const targetB = capacity - targetA;
+const candidates = [];
+for (let i = 0; i < active.length; i++){
+for (let j = i + 1; j < active.length; j++){
+if (active[i].group === active[j].group) continue;
+const pairs = [[active[i], active[j]], [active[j], active[i]]];
+for (const [a, b] of pairs){
+const takeA = Math.min(targetA, a.students.length);
+const takeB = Math.min(targetB, b.students.length);
+candidates.push({a, b, shortfall: capacity - takeA - takeB, filled: takeA + takeB});
+}
+}
+}
+if (!candidates.length) return null;
+candidates.sort((x,y) => (x.shortfall - y.shortfall) || (y.filled - x.filled));
+return candidates[0];
+}
+function admFillSingle(group, capacity, seatEntries, classesUsed){
+const take = Math.min(capacity, group.students.length);
+balancedTake(group.students, take).forEach(st => seatEntries.push(st));
+if (take > 0) classesUsed.push(group.name);
+}
+// Mirrors the offline allocate(): biggest halls filled first (so a big
+// hall's 50/50 split can still draw from full-size classes), 2 classes
+// per hall, capacity-honest (a short class leaves empty seats rather
+// than being topped up from its partner). The only addition is the
+// grade-group exclusion in admBestPairForRoom above — if every
+// remaining class shares one grade group, the hall is filled from a
+// single class rather than pairing two of the same grade together.
+function admAllocate(classPool, rooms){
+const pool = classPool.map(g => ({name: g.name, group: g.group, students: shuffle(g.students.slice())}));
+const roomResultsByIndex = new Array(rooms.length);
+const processingOrder = rooms.map((r,i) => i).sort((i,j) => rooms[j].capacity - rooms[i].capacity);
+processingOrder.forEach(roomIdx => {
+const room = rooms[roomIdx];
+const capacity = room.capacity;
+const active = pool.filter(g => g.students.length > 0);
+const seatEntries = [];
+const classesUsed = [];
+if (active.length >= 2){
+const best = admBestPairForRoom(active, capacity);
+if (best){
+const classA = best.a, classB = best.b;
+const takeA = Math.min(Math.ceil(capacity/2), classA.students.length);
+const takeB = Math.min(capacity - Math.ceil(capacity/2), classB.students.length);
+const takenA = balancedTake(classA.students, takeA);
+const takenB = balancedTake(classB.students, takeB);
+shuffle(takenA.concat(takenB)).forEach(st => seatEntries.push(st));
+if (takeA > 0) classesUsed.push(classA.name);
+if (takeB > 0) classesUsed.push(classB.name);
+} else {
+const largest = active.slice().sort((a,b) => b.students.length - a.students.length)[0];
+admFillSingle(largest, capacity, seatEntries, classesUsed);
+}
+} else if (active.length === 1){
+admFillSingle(active[0], capacity, seatEntries, classesUsed);
+}
+const classCounts = {};
+seatEntries.forEach(s => { classCounts[s.cls] = (classCounts[s.cls] || 0) + 1; });
+roomResultsByIndex[roomIdx] = {hall: room.name, capacity: room.capacity, students: seatEntries, classesUsed, classCounts};
+});
+const leftover = [];
+pool.forEach(g => leftover.push(...g.students));
+return {roomResults: roomResultsByIndex, leftover};
+}
+function admStatus(kind, msg){
+genStatus.className = 'status ' + (kind === 'err' ? 'err' : 'ok');
+genStatus.textContent = msg;
+}
+function runAdmissionGeneration(){
+const classes = getAdmClasses();
+if (!classes.length){ admStatus('err', 'Add at least one class with a Slot 1 or Slot 2 count.'); return; }
+const halls = getAdmHalls();
+if (!halls.length){ admStatus('err', 'Tick at least one hall ("Use for this test") with a capacity.'); return; }
+const slotKey = document.getElementById('admSlotChoiceSlot2').checked ? 'slot2' : 'slot1';
+const label = slotKey === 'slot1' ? 'Slot 1' : 'Slot 2';
+const timing = (slotKey === 'slot1' ? admSlot1Timing.value.trim() : admSlot2Timing.value.trim()) || label;
+const pool = buildAdmissionClassPool(classes, slotKey);
+const total = pool.reduce((s,g) => s + g.students.length, 0);
+if (!total){ admStatus('err', `No students entered for ${label} — check the Slot 1/Slot 2 counts in Step 2.`); return; }
+const res = admAllocate(pool, halls);
+lastAdmissionResults = {
+slotKey, label, timing,
+roomResults: res.roomResults,
+leftover: res.leftover
+};
+renderAdmissionResults();
+admStatus('ok', `Placed ${total - res.leftover.length}/${total} students into halls for ${label} — max 2 classes per hall, balanced 50/50, never the same grade paired together.`);
+[admReshuffleBtn, admPrintBtn, admExcelBtn, admAttendanceBtn, admCouponsBtn].forEach(b => b.style.display = '');
+}
+function renderAdmissionResults(){
+if (!lastAdmissionResults){ admissionResults.innerHTML = ''; return; }
+const {label, timing, roomResults, leftover} = lastAdmissionResults;
+let html = `<h2 style="font-family:var(--font-display);font-size:20px;color:var(--ink);margin:26px 0 14px;">${escapeHtml(label)} <span style="color:var(--slate);font-weight:400;font-size:14px;">(${escapeHtml(timing)})</span></h2>`;
+roomResults.forEach(r => {
+const breakdown = {};
+r.students.forEach(s => { breakdown[s.cls] = (breakdown[s.cls] || 0) + 1; });
+html += `<div class="room-card">
+<h3>${escapeHtml(r.hall)}</h3>
+<div class="meta">Assigned ${r.students.length} / ${r.capacity} seats</div>
+<div class="batches">${Object.keys(breakdown).map(cls => `<span class="mini-badge">${escapeHtml(cls)}: ${breakdown[cls]}</span>`).join('')}</div>
+</div>`;
+});
+if (leftover.length){
+const breakdown = {};
+leftover.forEach(s => { breakdown[s.cls] = (breakdown[s.cls] || 0) + 1; });
+html += `<div class="leftover">Hall capacity fell short — ${leftover.length} student(s) could not be placed: ${Object.keys(breakdown).map(cls => `${escapeHtml(cls)} (${breakdown[cls]})`).join(', ')}. Add more hall capacity and regenerate.</div>`;
+}
+admissionResults.innerHTML = html;
+}
+async function exportAdmissionSeatingExcel(){
+if (!lastAdmissionResults){ admStatus('err', 'Generate a seating plan first.'); return; }
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('Seating');
+ws.columns = [{width:22},{width:22},{width:16},{width:18}];
+addTitleBanner(ws, document.getElementById('examTitle').value.trim() || 'Admission Test Seating Plan', 4);
+const headRow = ws.addRow(['Token No.', 'Class', 'Hall', 'Slot']);
+styleHeaderRow(headRow);
+const slotLabel = `${lastAdmissionResults.label} (${lastAdmissionResults.timing})`;
+const flat = [];
+lastAdmissionResults.roomResults.forEach(r => r.students.forEach(s => flat.push({...s, hall:r.hall})));
+flat.sort((a,b) => a.cls.localeCompare(b.cls, undefined, {sensitivity:'base'}) || a.token.localeCompare(b.token));
+flat.forEach(s => {
+const row = ws.addRow([s.token, s.cls, s.hall, slotLabel]);
+row.eachCell(cell => { cell.border = THIN_BORDER; cell.alignment = {horizontal:'center', vertical:'middle'}; });
+});
+const tag = examFileTag();
+await downloadWorkbook(wb, ['AdmissionSeatingPlan', lastAdmissionResults.label.replace(/\s+/g,''), tag].filter(Boolean).join('_') + '.xlsx');
+}
+async function exportAdmissionAttendanceExcel(){
+if (!lastAdmissionResults){ admStatus('err', 'Generate a seating plan first.'); return; }
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('Attendance');
+ws.columns = [{width:22},{width:22},{width:16},{width:14}];
+addTitleBanner(ws, document.getElementById('examTitle').value.trim() || 'Admission Test Attendance', 4);
+const ROW_HEIGHT = 30;
+function addSummaryBox(totalCount){
+const summaryRow = ws.addRow(['', '', '', '']);
+summaryRow.height = ROW_HEIGHT;
+ws.mergeCells(summaryRow.number, 1, summaryRow.number, 2);
+const labelCell = summaryRow.getCell(1);
+labelCell.value = `Total Students:   ${totalCount}`;
+labelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+labelCell.fill = HALL_FILL;
+labelCell.border = THIN_BORDER;
+labelCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 2).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 2).fill = HALL_FILL;
+const absentCell = summaryRow.getCell(3);
+absentCell.value = 'Absent:';
+absentCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
+absentCell.fill = HALL_FILL;
+absentCell.border = THIN_BORDER;
+absentCell.alignment = {horizontal:'left', vertical:'middle'};
+ws.getCell(summaryRow.number, 4).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 4).fill = HALL_FILL;
+}
+const {label, timing, roomResults} = lastAdmissionResults;
+roomResults.forEach(r => {
+const entries = r.students.slice().sort((a,b) => a.token.localeCompare(b.token));
+const bandRow = ws.addRow([`${label} (${timing})   |   ${r.hall}   |   Students ${entries.length}`]);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 4);
+bandRow.height = ROW_HEIGHT;
+const bandCell = bandRow.getCell(1);
+bandCell.font = {bold:true, size:12, color:{argb:'FF1B2A4A'}};
+bandCell.fill = HALL_FILL;
+bandCell.alignment = {vertical:'middle', horizontal:'left'};
+for (let c = 1; c <= 4; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Token No.', 'Class', 'Hall', 'Sign']);
+styleHeaderRow(headRow);
+headRow.height = ROW_HEIGHT;
+entries.forEach(s => {
+const row = ws.addRow([s.token, s.cls, r.hall, '']);
+row.height = ROW_HEIGHT;
+row.eachCell(cell => { cell.border = THIN_BORDER; cell.alignment = {horizontal:'center', vertical:'middle'}; });
+});
+addSummaryBox(entries.length);
+const spacer = ws.addRow([]);
+spacer.height = ROW_HEIGHT;
+});
+const tag = examFileTag();
+await downloadWorkbook(wb, ['AdmissionAttendance', label.replace(/\s+/g,''), tag].filter(Boolean).join('_') + '.xlsx');
+}
+function couponHtml(c, logoSrc, instName, examTitle, examDateStr){
+return `<div class="coupon">
+${logoSrc ? `<img src="${logoSrc}" alt="logo">` : ''}
+<div class="inst">${escapeHtml(instName)}</div>
+<div class="exam">${escapeHtml(examTitle)}${examDateStr ? ' · ' + escapeHtml(examDateStr) : ''}</div>
+<div class="cls">${escapeHtml(c.cls)}</div>
+<div class="slot">${escapeHtml(c.label)} · ${escapeHtml(c.timing)}</div>
+<div class="hall">Hall: ${escapeHtml(c.hall)}</div>
+<div class="token">${escapeHtml(c.token)}</div>
+<div class="nameline">Name: ______________________</div>
+</div>`;
+}
+function generateAdmissionCoupons(){
+if (!lastAdmissionResults){ admStatus('err', 'Generate a seating plan first.'); return; }
+const logoImg = document.querySelector('.masthead img');
+const logoSrc = logoImg ? logoImg.src : '';
+const instName = document.getElementById('instName').value.trim() || 'iQuest';
+const examTitle = document.getElementById('examTitle').value.trim() || 'Admission Test';
+const examDateStr = formatExamDate();
+const coupons = [];
+const {label, timing, roomResults} = lastAdmissionResults;
+roomResults.forEach(r => {
+r.students.forEach(s => { coupons.push({token:s.token, cls:s.cls, hall:r.hall, label, timing}); });
+});
+if (!coupons.length){ admStatus('err', 'No assigned students to print coupons for.'); return; }
+const perPage = 16;
+let pagesHtml = '';
+for (let i = 0; i < coupons.length; i += perPage){
+const pageCoupons = coupons.slice(i, i + perPage);
+const cells = pageCoupons.map(c => couponHtml(c, logoSrc, instName, examTitle, examDateStr)).join('');
+const pad = perPage - pageCoupons.length;
+const blanks = pad > 0 ? Array.from({length:pad}).map(() => '<div class="coupon coupon-blank"></div>').join('') : '';
+pagesHtml += `<div class="page">${cells}${blanks}</div>`;
+}
+const win = window.open('', '_blank');
+if (!win){ admStatus('err', 'Pop-up blocked — allow pop-ups for this page to print hall tickets.'); return; }
+win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hall Tickets</title>
+<style>
+@page{ size:A4; margin:8mm; }
+*{box-sizing:border-box;}
+body{margin:0;font-family:Arial, sans-serif;}
+.page{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);width:194mm;height:281mm;page-break-after:always;}
+.page:last-child{page-break-after:auto;}
+.coupon{border:1px dashed #888;padding:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;}
+.coupon img{height:9mm;margin-bottom:1.5mm;}
+.coupon .inst{font-size:7.5px;color:#7A2E35;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;}
+.coupon .exam{font-size:7px;color:#5B6B82;margin-bottom:1.5mm;}
+.coupon .cls{font-size:11px;font-weight:800;color:#1B2A4A;margin-bottom:1mm;}
+.coupon .slot{display:inline-block;font-size:8px;font-weight:700;background:#AD7F3E;color:#fff;padding:1mm 2mm;border-radius:3mm;margin-bottom:1mm;}
+.coupon .hall{font-size:9.5px;font-weight:700;color:#1B2A4A;}
+.coupon .token{font-size:7px;color:#5B6B82;margin-top:1mm;font-family:monospace;}
+.coupon .nameline{font-size:6.5px;color:#5B6B82;margin-top:1.5mm;border-top:1px solid #ccc;padding-top:1mm;width:88%;}
+.coupon-blank{border:1px dashed #ccc;}
+</style></head><body>${pagesHtml}
+<script>window.onload = function(){ window.print(); };<\/script>
+</body></html>`);
+win.document.close();
+}
+admGenerateBtn.addEventListener('click', () => askConfirm(
+'Generate the admission test seating plan?',
+'This assigns the manually entered class counts (for the selected slot) into halls, keeping the same class/grade apart in each hall.',
+runAdmissionGeneration
+));
+admReshuffleBtn.addEventListener('click', () => askConfirm(
+'Reshuffle?',
+'This reshuffles which token sits where for the selected slot, using the same halls and counts.',
+runAdmissionGeneration
+));
+admPrintBtn.addEventListener('click', () => window.print());
+admExcelBtn.addEventListener('click', exportAdmissionSeatingExcel);
+admAttendanceBtn.addEventListener('click', exportAdmissionAttendanceExcel);
+admCouponsBtn.addEventListener('click', generateAdmissionCoupons);
+document.getElementById('admSlotChoiceSlot1').addEventListener('change', updateAdmCapacitySummary);
+document.getElementById('admSlotChoiceSlot2').addEventListener('change', updateAdmCapacitySummary);
 })();
 </script>
 </body>
