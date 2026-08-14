@@ -169,6 +169,26 @@ color:var(--slate);cursor:pointer;transition:border-color .15s,background .15s,b
 .file-drop:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 .file-drop input{display:none;}
 .file-drop .fname{color:var(--ink);font-weight:600;margin-top:6px;font-family:var(--font-mono);font-size:13px;}
+.uploaded-files-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.file-chip{
+display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);
+border-radius:var(--radius-sm);background:#FBFAF6;transition:border-color .15s,background .15s;
+}
+.file-chip:hover{border-color:var(--gold-soft);background:#FDFBF3;}
+.file-chip-name{
+flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+font-family:var(--font-mono);font-size:12.5px;color:var(--ink);font-weight:600;
+}
+.file-chip-count{
+flex-shrink:0;font-family:var(--font-mono);font-size:11px;color:var(--slate);
+background:var(--paper);padding:2px 9px;border-radius:20px;white-space:nowrap;
+}
+.file-chip-remove{
+flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+background:#fff;color:var(--red);cursor:pointer;font-size:13px;line-height:1;
+display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,transform .15s;
+}
+.file-chip-remove:hover{background:var(--red-soft);border-color:var(--red);transform:scale(1.08);}
 table.data{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px;}
 table.data th{
 text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-family:var(--font-mono);
@@ -328,6 +348,36 @@ body{background:#fff;}
 </div>
 </div>
 </div>
+<div id="couponOptionsOverlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(27,42,74,0.5);z-index:1000;align-items:center;justify-content:center;">
+<div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:30px 34px;max-width:460px;width:92%;max-height:82vh;overflow-y:auto;">
+<div style="font-family:var(--font-display);font-size:19px;color:var(--ink);margin-bottom:6px;font-weight:800;">Hall Tickets — sort &amp; filter</div>
+<div style="color:var(--slate);font-size:13px;margin-bottom:18px;line-height:1.5;">Group and order the coupons before printing, so cutting them apart stays clean. Use "Save as PDF" in the print dialog if you want a PDF file instead of printing directly.</div>
+<div style="margin-bottom:16px;">
+<label>Sort order</label>
+<select id="couponSortOrder" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;color:var(--ink);background:#fff;font-family:var(--font-body);">
+<option value="hall-class">Hall, then Class</option>
+<option value="class-hall">Class, then Hall</option>
+</select>
+</div>
+<div style="margin-bottom:16px;">
+<div style="display:flex;align-items:baseline;justify-content:space-between;">
+<label style="margin-bottom:0;">Classes <span style="font-weight:400;text-transform:none;letter-spacing:0;">(select one or more)</span></label>
+<span style="font-size:11.5px;"><a href="#" id="couponClassAll" style="color:var(--gold);">All</a> · <a href="#" id="couponClassNone" style="color:var(--gold);">None</a></span>
+</div>
+<select id="couponClassSelect" multiple size="5" style="width:100%;margin-top:8px;padding:6px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;color:var(--ink);background:#fff;font-family:var(--font-body);"></select>
+<div style="color:var(--slate);font-size:11px;margin-top:5px;line-height:1.4;">Hold Ctrl (Windows) / Cmd (Mac) and click to pick more than one — or use "All" above.</div>
+</div>
+<div style="margin-bottom:10px;">
+<label style="margin-bottom:4px;">Halls <span style="font-weight:400;text-transform:none;letter-spacing:0;">(automatic — based on the classes above)</span></label>
+<div id="couponHallSummary" style="font-size:12.5px;color:var(--ink);background:var(--paper);border-radius:var(--radius-sm);padding:9px 11px;line-height:1.6;"></div>
+</div>
+<div id="couponFilterStatus" style="color:var(--slate);font-size:12px;margin:8px 0 16px;"></div>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button class="action" type="button" id="couponOptionsGo">Print / Save as PDF</button>
+<button class="ghost" type="button" id="couponOptionsCancel">Cancel</button>
+</div>
+</div>
+</div>
 <!-- STEP 1: Exam details -->
 <section class="step no-print">
 
@@ -392,6 +442,7 @@ body{background:#fff;}
 <div class="fname" id="fileName">No files selected</div>
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple>
 </label>
+<div id="uploadedFilesList" class="uploaded-files-list" style="display:none;"></div>
 <div class="status" id="uploadStatus"></div>
 <table class="data" id="batchTable" style="display:none;">
 <thead><tr><th style="width:32px;"></th><th>Class</th><th>Students</th></tr></thead>
@@ -430,7 +481,7 @@ body{background:#fff;}
 </div>
 </div>
 <table class="data" id="admClassTable">
-<thead><tr><th>Class</th><th style="width:130px;">Slot 1 count</th><th style="width:130px;">Slot 2 count</th><th style="width:36px;"></th></tr></thead>
+<thead><tr><th>Present Class</th><th>Moving to Class</th><th style="width:130px;">Slot 1 count</th><th style="width:130px;">Slot 2 count</th><th style="width:36px;"></th></tr></thead>
 <tbody id="admClassRows"></tbody>
 </table>
 <div class="row-actions">
@@ -634,6 +685,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) logoutBtn.addEventListener('click', () => { clearSession(); showLogin(); });
 let students = []; // {name, roll, cls, batch, father} — the EFFECTIVE (selected-classes) list used everywhere downstream
 let allStudentsRaw = []; // full parsed upload, before class/batch selection filtering
+let uploadedFileEntries = []; // [{fileName, students}] — one entry per currently-loaded file, so a single wrongly-picked file can be removed without re-uploading everything
 let batchList = []; // {name, count} — class breakdown of the full upload, used to build the selection checkboxes
 let selectedBatches = new Set(); // individual batch names currently ticked
 let lastResults = null; // for reshuffle without re-reading rooms
@@ -659,6 +711,20 @@ const DEFAULT_HALLS = [
 {name:'Hall No. 13', capacity:48},
 {name:'Hall No. 14', capacity:39},
 {name:'Hall No. 15', capacity:60}
+];
+// Standard present-class → next-class promotion list for Admission Test
+// Step 2 — pre-filled so only the Slot 1/Slot 2 counts need typing.
+// 12th NM/Med are terminal (no further class), so nextClass stays blank.
+const DEFAULT_ADM_CLASSES = [
+{name:'7th', nextClass:'8th'},
+{name:'8th', nextClass:'9th'},
+{name:'9th', nextClass:'10th'},
+{name:'10th NM', nextClass:'11th NM'},
+{name:'10th Med', nextClass:'11th Med'},
+{name:'11th NM', nextClass:'12th NM'},
+{name:'11th Med', nextClass:'12th Med'},
+{name:'12th NM', nextClass:''},
+{name:'12th Med', nextClass:''}
 ];
 const fileInput = document.getElementById('fileInput');
 const fileName = document.getElementById('fileName');
@@ -748,7 +814,7 @@ lastAdmissionResults = null;
 genStatus.className = 'status';
 genStatus.textContent = '';
 if (type === 'admission' && admHallRows.children.length === 0) DEFAULT_HALLS.forEach(h => addAdmHallRow(h.name, h.capacity));
-if (type === 'admission' && admClassRows.children.length === 0) addAdmClassRow();
+if (type === 'admission' && admClassRows.children.length === 0) DEFAULT_ADM_CLASSES.forEach(c => addAdmClassRow(c.name, c.nextClass));
 }
 const MODE_SWITCH_KEY = 'examSeatingPlanPendingMode';
 function modeLabel(t){ return t === 'online' ? 'Online' : (t === 'admission' ? 'Admission Test' : 'Offline'); }
@@ -1280,15 +1346,17 @@ reader.readAsArrayBuffer(file);
 fileInput.addEventListener('change', async (e) => {
 const files = Array.from(e.target.files || []);
 if (!files.length) return;
-fileName.textContent = files.length === 1 ? files[0].name : `${files.length} files: ${files.map(f => f.name).join(', ')}`;
 uploadStatus.className = 'status';
 uploadStatus.textContent = 'Reading file(s)…';
 const results = await Promise.allSettled(files.map(f => parseStudentFile(f)));
 const succeeded = results.filter(r => r.status === 'fulfilled').map(r => r.value);
 const failed = results.filter(r => r.status === 'rejected').map(r => r.reason);
 if (!succeeded.length){
+fileName.textContent = 'No files selected';
 uploadStatus.className = 'status err';
 uploadStatus.textContent = 'Could not read the selected file(s): ' + failed.map(f => `${f.fileName} (${f.message})`).join('; ');
+uploadedFileEntries = [];
+renderUploadedFilesList();
 allStudentsRaw = []; batchList = []; selectedBatches = new Set(); students = [];
 updateCapacitySummary();
 updateSelectedSummary();
@@ -1297,7 +1365,56 @@ classSelectActions.style.display = 'none';
 classSelectStatus.textContent = '';
 return;
 }
-allStudentsRaw = succeeded.flatMap(r => r.students);
+// A fresh file-picker selection replaces whatever was loaded before —
+// this keeps the "remove one file" flow simple and predictable.
+uploadedFileEntries = succeeded;
+fileInput.value = ''; // lets the same filename be re-picked later if needed
+applyUploadedFiles(failed);
+});
+// Renders the removable chip list under the file-drop zone — one row per
+// currently-loaded file, each with its own ✕ button, so a wrongly-picked
+// file can be dropped without redoing the whole upload.
+function renderUploadedFilesList(){
+const list = document.getElementById('uploadedFilesList');
+if (!list) return;
+if (!uploadedFileEntries.length){ list.style.display = 'none'; list.innerHTML = ''; return; }
+list.style.display = 'flex';
+list.innerHTML = uploadedFileEntries.map((f, idx) => `
+<div class="file-chip">
+<span class="file-chip-name" title="${escapeHtml(f.fileName)}">${escapeHtml(f.fileName)}</span>
+<span class="file-chip-count">${f.students.length} student${f.students.length===1?'':'s'}</span>
+<button type="button" class="file-chip-remove" data-idx="${idx}" title="Remove this file">✕</button>
+</div>
+`).join('');
+list.querySelectorAll('.file-chip-remove').forEach(btn => {
+btn.addEventListener('click', () => removeUploadedFile(parseInt(btn.dataset.idx, 10)));
+});
+}
+function removeUploadedFile(idx){
+if (idx < 0 || idx >= uploadedFileEntries.length) return;
+uploadedFileEntries.splice(idx, 1);
+applyUploadedFiles([]);
+}
+// Recomputes allStudentsRaw/batchList/selection from the current
+// uploadedFileEntries — shared by the initial upload and by the
+// per-file remove button, so both paths stay in sync.
+function applyUploadedFiles(failed){
+failed = failed || [];
+if (!uploadedFileEntries.length){
+fileName.textContent = 'No files selected';
+renderUploadedFilesList();
+allStudentsRaw = []; batchList = []; selectedBatches = new Set(); students = [];
+updateCapacitySummary();
+updateSelectedSummary();
+batchTable.style.display = 'none';
+classSelectActions.style.display = 'none';
+classSelectStatus.textContent = '';
+uploadStatus.className = 'status';
+uploadStatus.textContent = 'No files selected.';
+return;
+}
+fileName.textContent = uploadedFileEntries.length === 1 ? uploadedFileEntries[0].fileName : `${uploadedFileEntries.length} files loaded`;
+allStudentsRaw = uploadedFileEntries.flatMap(r => r.students);
 // Batches from a different branch (their names end in "UE", e.g.
 // "Aspire NM UE", "Aspire Med UE") never belong in this tool — they're
 // dropped right here, before they ever reach the class list or
@@ -1334,9 +1451,10 @@ batchList.forEach(g => g.batches.forEach(b => selectedBatches.add(b.name)));
 renderClassSelectionTable();
 batchTable.style.display = 'table';
 classSelectActions.style.display = 'flex';
+renderUploadedFilesList();
 uploadStatus.className = failed.length ? 'status err' : 'status ok';
-const perFile = succeeded.map(r => `${r.fileName}: ${r.students.length}`).join(' · ');
-let msg = `Loaded ${allStudentsRaw.length} students from ${succeeded.length} file${succeeded.length===1?'':'s'} across ${batchList.length} class(es).`;
+const perFile = uploadedFileEntries.map(r => `${r.fileName}: ${r.students.length}`).join(' · ');
+let msg = `Loaded ${allStudentsRaw.length} students from ${uploadedFileEntries.length} file${uploadedFileEntries.length===1?'':'s'} across ${batchList.length} class(es).`;
 if (failed.length) msg += ` ${failed.length} file(s) failed: ${failed.map(f => `${f.fileName} (${f.message})`).join('; ')}.`;
 const excludedTotal = Object.values(excludedCounts).reduce((a,b) => a+b, 0);
 if (excludedTotal){
@@ -1345,7 +1463,7 @@ msg += ` ${excludedTotal} student(s) from a different branch were excluded autom
 }
 uploadStatus.innerHTML = `${msg}<div style="color:var(--slate);font-size:11.5px;margin-top:4px;">Per file: ${perFile}</div>`;
 recomputeSelectedStudents();
-});
+}
 // Rebuilds the checkbox table from the current batchList + selectedBatches.
 // Called after upload and after Select all / Select none, so the checked
 // state always reflects selectedBatches (the single source of truth).
@@ -2834,10 +2952,11 @@ admClassStatus.textContent = classes.length
 ? `Slot 1: ${s1} students · Slot 2: ${s2} students · Total: ${s1 + s2}`
 : 'Add at least one class row with a Slot 1 or Slot 2 count.';
 }
-function addAdmClassRow(name, s1, s2){
+function addAdmClassRow(name, nextClass, s1, s2){
 const row = document.createElement('tr');
 row.innerHTML = `
-<td><input type="text" class="admClassName" placeholder="e.g. 11th NM" value="${name ? escapeHtml(name) : ''}"></td>
+<td><input type="text" class="admClassName" placeholder="e.g. 8th" value="${name ? escapeHtml(name) : ''}"></td>
+<td><input type="text" class="admNextClassName" placeholder="e.g. 9th (optional)" value="${nextClass ? escapeHtml(nextClass) : ''}"></td>
 <td><input type="number" class="admSlot1Count" min="0" value="${s1 != null ? s1 : 0}"></td>
 <td><input type="number" class="admSlot2Count" min="0" value="${s2 != null ? s2 : 0}"></td>
 <td><button type="button" class="remove-btn" title="Remove class">✕</button></td>
@@ -2850,6 +2969,7 @@ updateAdmClassSummary();
 function getAdmClasses(){
 return Array.from(admClassRows.children).map(row => ({
 name: row.querySelector('.admClassName').value.trim(),
+nextClass: row.querySelector('.admNextClassName').value.trim(),
 slot1: parseInt(row.querySelector('.admSlot1Count').value, 10) || 0,
 slot2: parseInt(row.querySelector('.admSlot2Count').value, 10) || 0
 })).filter(c => c.name && (c.slot1 > 0 || c.slot2 > 0));
@@ -2940,12 +3060,23 @@ return classes.map(c => {
 const count = slotKey === 'slot1' ? c.slot1 : c.slot2;
 if (!count) return null;
 const group = admGradeGroup(c.name);
+const slotTag = slotKey === 'slot1' ? 'S1' : 'S2';
+// Coupon code reads as typed — "8th Moving 9th-S1-001" when a next
+// class is given. The present-class side drops any NM/Med-style
+// qualifier when there's a next class (so "10th NM" reads as "10th
+// Moving 11th NM", not the redundant "10th NM Moving 11th NM") — the
+// next-class side keeps its qualifier since that's the section being
+// moved into. With no next class (e.g. 12th, which is terminal), the
+// code just uses the class name as typed: "12th NM-S1-001".
+const leadingGrade = c.name.trim().match(/^\d+[a-zA-Z]*/);
+const presentSide = c.nextClass && leadingGrade ? leadingGrade[0] : c.name;
+const codeLabel = c.nextClass ? `${presentSide} Moving ${c.nextClass}` : c.name;
 const students = [];
 for (let i = 1; i <= count; i++){
 students.push({
 cls: c.name,
 group,
-token: `${c.name.replace(/\s+/g,'').toUpperCase()}-${slotKey === 'slot1' ? 'S1' : 'S2'}-${String(i).padStart(3,'0')}`
+token: `${codeLabel}-${slotTag}-${String(i).padStart(3,'0')}`
 });
 }
 return {name: c.name, group, students};
@@ -2983,10 +3114,14 @@ if (take > 0) classesUsed.push(group.name);
 // Mirrors the offline allocate(): biggest halls filled first (so a big
 // hall's 50/50 split can still draw from full-size classes), 2 classes
 // per hall, capacity-honest (a short class leaves empty seats rather
-// than being topped up from its partner). The only addition is the
-// grade-group exclusion in admBestPairForRoom above — if every
-// remaining class shares one grade group, the hall is filled from a
-// single class rather than pairing two of the same grade together.
+// than being topped up from its partner). On top of the grade-group
+// exclusion in admBestPairForRoom above, this now also mirrors offline's
+// mop-up pass (top up an under-2-class hall with spare seats), the
+// single catch-all hall (absorbs true leftovers, briefly going past the
+// 2-class cap if it must), and the final exhaustive pass (spreads
+// anything still left over across ANY hall with spare capacity) — so
+// admission test leftovers are handled the same way offline mode
+// handles them, instead of just being reported as unplaced.
 function admAllocate(classPool, rooms){
 const pool = classPool.map(g => ({name: g.name, group: g.group, students: shuffle(g.students.slice())}));
 const roomResultsByIndex = new Array(rooms.length);
@@ -2997,6 +3132,7 @@ const capacity = room.capacity;
 const active = pool.filter(g => g.students.length > 0);
 const seatEntries = [];
 const classesUsed = [];
+const groupsUsed = [];
 if (active.length >= 2){
 const best = admBestPairForRoom(active, capacity);
 if (best){
@@ -3006,18 +3142,91 @@ const takeB = Math.min(capacity - Math.ceil(capacity/2), classB.students.length)
 const takenA = balancedTake(classA.students, takeA);
 const takenB = balancedTake(classB.students, takeB);
 shuffle(takenA.concat(takenB)).forEach(st => seatEntries.push(st));
-if (takeA > 0) classesUsed.push(classA.name);
-if (takeB > 0) classesUsed.push(classB.name);
+if (takeA > 0){ classesUsed.push(classA.name); groupsUsed.push(classA.group); }
+if (takeB > 0){ classesUsed.push(classB.name); groupsUsed.push(classB.group); }
 } else {
 const largest = active.slice().sort((a,b) => b.students.length - a.students.length)[0];
 admFillSingle(largest, capacity, seatEntries, classesUsed);
+groupsUsed.push(largest.group);
 }
 } else if (active.length === 1){
 admFillSingle(active[0], capacity, seatEntries, classesUsed);
+groupsUsed.push(active[0].group);
 }
 const classCounts = {};
 seatEntries.forEach(s => { classCounts[s.cls] = (classCounts[s.cls] || 0) + 1; });
-roomResultsByIndex[roomIdx] = {hall: room.name, capacity: room.capacity, students: seatEntries, classesUsed, classCounts};
+roomResultsByIndex[roomIdx] = {hall: room.name, capacity: room.capacity, students: seatEntries, classesUsed, classCounts, groupsUsed};
+});
+const roomResults = roomResultsByIndex;
+function addExtra(r, student){
+r.students.push(student);
+if (!r.classesUsed.includes(student.cls)) r.classesUsed.push(student.cls);
+if (!r.groupsUsed.includes(student.group)) r.groupsUsed.push(student.group);
+r.classCounts[student.cls] = (r.classCounts[student.cls] || 0) + 1;
+}
+function usedCapacity(r){ return r.students.length; }
+// Mop-up pass: a hall that ended up with FEWER than 2 classes still has
+// spare capacity — top it up with a 2nd class if one's available.
+// The "never the same grade twice" rule is HARD here, same as the main
+// pairing pass — no fallback that lets two classes of one grade group
+// share a hall. If nothing qualifies, the spare seats are simply left
+// empty (capacity-honest), same spirit as the main pass.
+roomResults.forEach(r => {
+let spare = r.capacity - usedCapacity(r);
+while (spare > 0 && r.classesUsed.length < 2){
+const candidates = pool.filter(g => g.students.length > 0 && !r.classesUsed.includes(g.name) && !r.groupsUsed.includes(g.group));
+if (!candidates.length) break;
+candidates.sort((a,b) => b.students.length - a.students.length);
+const chosen = candidates[0];
+const take = Math.min(spare, chosen.students.length);
+const taken = balancedTake(chosen.students, take);
+taken.forEach(st => addExtra(r, st));
+spare -= take;
+}
+});
+// Last resort: after that, some students can still be left over. Only
+// ONE designated hall — the smallest hall, processed last — acts as a
+// catch-all for them, briefly going past the 2-class limit so the
+// overflow stays confined to a single, clearly-flagged hall. The
+// "never the same grade twice" rule is still HARD even here — it is
+// never broken, in this hall or any other.
+const lastHallIdx = processingOrder[processingOrder.length - 1];
+const catchAllRoom = lastHallIdx !== undefined ? roomResultsByIndex[lastHallIdx] : null;
+if (catchAllRoom){
+let spare = catchAllRoom.capacity - usedCapacity(catchAllRoom);
+while (spare > 0){
+const candidates = pool.filter(g => g.students.length > 0 && !catchAllRoom.classesUsed.includes(g.name) && !catchAllRoom.groupsUsed.includes(g.group));
+if (!candidates.length) break;
+candidates.sort((a,b) => b.students.length - a.students.length);
+const chosen = candidates[0];
+const take = Math.min(spare, chosen.students.length);
+const taken = balancedTake(chosen.students, take);
+taken.forEach(st => addExtra(catchAllRoom, st));
+spare -= take;
+}
+}
+// Final exhaustive pass: if students are STILL left over (e.g. the
+// catch-all hall itself ran out of room), spread them across ANY hall
+// that still has spare capacity, doesn't already hold a class from the
+// same grade group, AND doesn't already hold this exact class either —
+// so a class already seated at ~half a hall is never topped up past
+// that share in a different hall. If no such hall exists, those
+// students stay genuinely unplaced and are reported as a shortfall
+// (add capacity and regenerate) rather than being force-crammed
+// somewhere that breaks the 2-class / 50-50 shape.
+const stillLeftoverGroups = pool.filter(g => g.students.length > 0);
+stillLeftoverGroups.forEach(g => {
+while (g.students.length > 0){
+const roomsBySpare = roomResults
+.map(r => ({r, spare: r.capacity - usedCapacity(r)}))
+.filter(x => x.spare > 0 && !x.r.groupsUsed.includes(g.group) && !x.r.classesUsed.includes(g.name))
+.sort((x,y) => y.spare - x.spare);
+if (!roomsBySpare.length) break;
+const target = roomsBySpare[0].r;
+const take = Math.min(roomsBySpare[0].spare, g.students.length);
+const taken = balancedTake(g.students, take);
+taken.forEach(st => addExtra(target, st));
+}
 });
 const leftover = [];
 pool.forEach(g => leftover.push(...g.students));
@@ -3045,7 +3254,7 @@ roomResults: res.roomResults,
 leftover: res.leftover
 };
 renderAdmissionResults();
-admStatus('ok', `Placed ${total - res.leftover.length}/${total} students into halls for ${label} — max 2 classes per hall, balanced 50/50, never the same grade paired together.`);
+admStatus('ok', `Placed ${total - res.leftover.length}/${total} students into halls for ${label} — 2 classes per hall where possible (grade groups never paired together), with spare seats topped up automatically before anyone is left unplaced.`);
 [admReshuffleBtn, admPrintBtn, admExcelBtn, admAttendanceBtn, admCouponsBtn].forEach(b => b.style.display = '');
 }
 function renderAdmissionResults(){
@@ -3143,29 +3352,77 @@ await downloadWorkbook(wb, ['AdmissionAttendance', label.replace(/\s+/g,''), tag
 }
 function couponHtml(c, logoSrc, instName, examTitle, examDateStr){
 return `<div class="coupon">
+<div class="slot">${escapeHtml(c.label)}<span>${escapeHtml(c.timing)}</span></div>
 ${logoSrc ? `<img src="${logoSrc}" alt="logo">` : ''}
-<div class="inst">${escapeHtml(instName)}</div>
+<div class="doctype">Admission Test</div>
 <div class="exam">${escapeHtml(examTitle)}${examDateStr ? ' · ' + escapeHtml(examDateStr) : ''}</div>
 <div class="cls">${escapeHtml(c.cls)}</div>
-<div class="slot">${escapeHtml(c.label)} · ${escapeHtml(c.timing)}</div>
-<div class="hall">Hall: ${escapeHtml(c.hall)}</div>
-<div class="token">${escapeHtml(c.token)}</div>
-<div class="nameline">Name: ______________________</div>
+<div class="code">${escapeHtml(c.token)}</div>
+<div class="hall">${escapeHtml(c.hall)}</div>
+<div class="wish"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3Zm0 0 4.5-8.5a1.5 1.5 0 0 1 2.7 1.3L13 9h5.3a2 2 0 0 1 1.9 2.7l-2.3 6.5A2 2 0 0 1 16 19.5H7"/></svg> Best of luck!</div>
 </div>`;
+}
+function naturalCompare(a, b){ return String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:'base'}); }
+let couponPool = [];
+const couponOptionsOverlay = document.getElementById('couponOptionsOverlay');
+const couponSortOrder = document.getElementById('couponSortOrder');
+const couponClassSelect = document.getElementById('couponClassSelect');
+const couponHallSummary = document.getElementById('couponHallSummary');
+const couponFilterStatus = document.getElementById('couponFilterStatus');
+function selectedClasses(){
+return Array.from(couponClassSelect.selectedOptions).map(o => o.value);
+}
+// Halls are no longer picked by hand — whichever halls actually hold
+// the selected class(es) are pulled in automatically, so ticking a
+// class is the only step needed.
+function updateCouponFilterStatus(){
+const okClasses = new Set(selectedClasses());
+const matching = couponPool.filter(c => okClasses.has(c.cls));
+const halls = Array.from(new Set(matching.map(c => c.hall))).sort(naturalCompare);
+couponHallSummary.textContent = halls.length ? halls.join(', ') : '—';
+const classesTotal = couponClassSelect.options.length;
+couponFilterStatus.textContent = `${okClasses.size}/${classesTotal} class(es) selected, across ${halls.length} hall(s) — ${matching.length} coupon(s) will print.`;
 }
 function generateAdmissionCoupons(){
 if (!lastAdmissionResults){ admStatus('err', 'Generate a seating plan first.'); return; }
+const {label, timing, roomResults} = lastAdmissionResults;
+couponPool = [];
+roomResults.forEach(r => {
+r.students.forEach(s => { couponPool.push({token:s.token, cls:s.cls, hall:r.hall, label, timing}); });
+});
+if (!couponPool.length){ admStatus('err', 'No assigned students to print coupons for.'); return; }
+const classes = Array.from(new Set(couponPool.map(c => c.cls))).sort(naturalCompare);
+couponClassSelect.innerHTML = classes.map(c => `<option value="${escapeHtml(c)}" selected>${escapeHtml(c)}</option>`).join('');
+couponClassSelect.addEventListener('change', updateCouponFilterStatus);
+couponSortOrder.value = 'hall-class';
+updateCouponFilterStatus();
+couponOptionsOverlay.style.display = 'flex';
+}
+document.getElementById('couponClassAll').addEventListener('click', (e) => { e.preventDefault(); Array.from(couponClassSelect.options).forEach(o => o.selected = true); updateCouponFilterStatus(); });
+document.getElementById('couponClassNone').addEventListener('click', (e) => { e.preventDefault(); Array.from(couponClassSelect.options).forEach(o => o.selected = false); updateCouponFilterStatus(); });
+document.getElementById('couponOptionsCancel').addEventListener('click', () => { couponOptionsOverlay.style.display = 'none'; });
+couponOptionsOverlay.addEventListener('click', (e) => { if (e.target === couponOptionsOverlay) couponOptionsOverlay.style.display = 'none'; });
+document.getElementById('couponOptionsGo').addEventListener('click', () => {
+const okClasses = new Set(selectedClasses());
+let filtered = couponPool.filter(c => okClasses.has(c.cls));
+if (!filtered.length){ admStatus('err', 'No coupons match the selected class(es) — pick at least one.'); return; }
+const order = couponSortOrder.value;
+filtered = filtered.slice().sort((a, b) => {
+const primary = order === 'class-hall' ? naturalCompare(a.cls, b.cls) : naturalCompare(a.hall, b.hall);
+if (primary !== 0) return primary;
+const secondary = order === 'class-hall' ? naturalCompare(a.hall, b.hall) : naturalCompare(a.cls, b.cls);
+if (secondary !== 0) return secondary;
+return naturalCompare(a.token, b.token);
+});
+couponOptionsOverlay.style.display = 'none';
+openCouponsPrintWindow(filtered);
+});
+function openCouponsPrintWindow(coupons){
 const logoImg = document.querySelector('.masthead img');
 const logoSrc = logoImg ? logoImg.src : '';
 const instName = document.getElementById('instName').value.trim() || 'iQuest';
 const examTitle = document.getElementById('examTitle').value.trim() || 'Admission Test';
 const examDateStr = formatExamDate();
-const coupons = [];
-const {label, timing, roomResults} = lastAdmissionResults;
-roomResults.forEach(r => {
-r.students.forEach(s => { coupons.push({token:s.token, cls:s.cls, hall:r.hall, label, timing}); });
-});
-if (!coupons.length){ admStatus('err', 'No assigned students to print coupons for.'); return; }
 const perPage = 16;
 let pagesHtml = '';
 for (let i = 0; i < coupons.length; i += perPage){
@@ -3184,15 +3441,16 @@ win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hall
 body{margin:0;font-family:Arial, sans-serif;}
 .page{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);width:194mm;height:281mm;page-break-after:always;}
 .page:last-child{page-break-after:auto;}
-.coupon{border:1px dashed #888;padding:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;}
-.coupon img{height:9mm;margin-bottom:1.5mm;}
-.coupon .inst{font-size:7.5px;color:#7A2E35;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;}
-.coupon .exam{font-size:7px;color:#5B6B82;margin-bottom:1.5mm;}
-.coupon .cls{font-size:11px;font-weight:800;color:#1B2A4A;margin-bottom:1mm;}
-.coupon .slot{display:inline-block;font-size:8px;font-weight:700;background:#AD7F3E;color:#fff;padding:1mm 2mm;border-radius:3mm;margin-bottom:1mm;}
-.coupon .hall{font-size:9.5px;font-weight:700;color:#1B2A4A;}
-.coupon .token{font-size:7px;color:#5B6B82;margin-top:1mm;font-family:monospace;}
-.coupon .nameline{font-size:6.5px;color:#5B6B82;margin-top:1.5mm;border-top:1px solid #ccc;padding-top:1mm;width:88%;}
+.coupon{position:relative;border:1px dashed #000;padding:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;}
+.coupon img{height:14mm;margin-bottom:1.5mm;filter:grayscale(100%);}
+.coupon .doctype{font-size:9px;color:#000;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;}
+.coupon .exam{font-size:8px;color:#333;margin-bottom:2mm;}
+.coupon .cls{font-size:16px;font-weight:800;color:#000;}
+.coupon .code{font-size:7px;color:#333;font-family:monospace;margin-bottom:2mm;letter-spacing:0.2px;}
+.coupon .slot{position:absolute;top:1.5mm;right:1.5mm;display:flex;flex-direction:column;align-items:center;font-size:6.5px;font-weight:700;background:#000;color:#fff;padding:1mm 1.8mm;border-radius:1.5mm;line-height:1.3;}
+.coupon .slot span{font-size:5.5px;font-weight:400;}
+.coupon .hall{font-size:15px;font-weight:800;color:#000;}
+.coupon .wish{font-size:8px;color:#333;margin-top:2.5mm;display:flex;align-items:center;gap:1mm;}
 .coupon-blank{border:1px dashed #ccc;}
 </style></head><body>${pagesHtml}
 <script>window.onload = function(){ window.print(); };<\/script>
