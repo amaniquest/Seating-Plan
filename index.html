@@ -2951,6 +2951,10 @@ const s2 = classes.reduce((s,c) => s + c.slot2, 0);
 admClassStatus.textContent = classes.length
 ? `Slot 1: ${s1} students · Slot 2: ${s2} students · Total: ${s1 + s2}`
 : 'Add at least one class row with a Slot 1 or Slot 2 count.';
+// Step 3's halls summary depends on these counts (via
+// admNeededForSelectedSlot) — refresh it here too, so it's never
+// stale just because only Step 2 was touched.
+if (typeof updateAdmCapacitySummary === 'function') updateAdmCapacitySummary();
 }
 function addAdmClassRow(name, nextClass, s1, s2){
 const row = document.createElement('tr');
@@ -2989,18 +2993,23 @@ const rows = Array.from(admHallRows.querySelectorAll('.room-row'));
 const usedRows = rows.filter(row => row.querySelector('.admHallUse').checked
 && (parseInt(row.querySelector('.admHallCap').value, 10) || 0) > 0);
 const total = usedRows.reduce((s,row) => s + (parseInt(row.querySelector('.admHallCap').value, 10) || 0), 0);
-if (!usedRows.length){
-admCapacitySummary.className = 'status';
-admCapacitySummary.textContent = 'No halls ticked yet.';
-return;
-}
 const needed = admNeededForSelectedSlot();
 const slotLabel = admSelectedSlotKey() === 'slot2' ? 'Slot 2' : 'Slot 1';
-let text = `Ticked: ${usedRows.length} hall(s), total capacity ${total}.`;
+if (!usedRows.length){
+admCapacitySummary.className = needed ? 'status err' : 'status';
+admCapacitySummary.textContent = needed
+? `Students needed (${slotLabel}): ${needed} · No halls ticked yet.`
+: 'No halls ticked yet.';
+return;
+}
+// Both figures together in one line, so it's always clear at a glance
+// whether the ticked halls actually cover the students entered in
+// Step 2 — no need to jump between the two steps to compare them.
+let text = `Students needed (${slotLabel}): ${needed} · Halls ticked: ${usedRows.length} (capacity ${total}).`;
 if (needed){
 const diff = total - needed;
-if (diff < 0){ admCapacitySummary.className = 'status err'; text += ` Short by ${-diff} seat(s) for ${slotLabel}.`; }
-else { admCapacitySummary.className = 'status ok'; text += diff > 0 ? ` ${diff} seat(s) spare (${slotLabel}).` : ` Exact match (${slotLabel}).`; }
+if (diff < 0){ admCapacitySummary.className = 'status err'; text += ` Short by ${-diff} seat(s).`; }
+else { admCapacitySummary.className = 'status ok'; text += diff > 0 ? ` ${diff} seat(s) spare.` : ` Exact match.`; }
 } else {
 admCapacitySummary.className = 'status';
 }
