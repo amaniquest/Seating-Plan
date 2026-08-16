@@ -879,6 +879,11 @@ roomRows.appendChild(row);
 // {type:'batch', name} to pin just ONE specific sub-batch, leaving the
 // rest of that class to shuffle normally.
 row.pins = Array.isArray(pins) ? pins.slice(0, 2) : [];
+if (row.pins.length){
+useBox.checked = true;
+useBox.disabled = true;
+row.classList.remove('disabled');
+}
 setupPinPanel(row);
 populatePinPanel(row);
 }
@@ -908,6 +913,20 @@ if (row.pins.length >= 2) return false;
 row.pins.push({type, name});
 } else {
 row.pins = row.pins.filter(p => !(p.type === type && p.name === name));
+}
+// A pinned hall is reserved for its pin(s) — auto-tick "Use for this
+// test" so it's never accidentally left out of generation, and lock
+// the checkbox (greyed out, can't be unticked) until every pin on this
+// hall is removed again.
+const useBox = row.querySelector('.roomUse');
+if (row.pins.length){
+useBox.checked = true;
+useBox.disabled = true;
+useBox.title = 'Locked — this hall is pinned, so it always stays in use. Remove the pin(s) to unlock it.';
+row.classList.remove('disabled');
+} else {
+useBox.disabled = false;
+useBox.title = '';
 }
 return true;
 }
@@ -999,52 +1018,95 @@ roomRows.querySelectorAll('.room-row').forEach(row => populatePinPanel(row));
 }
 DEFAULT_HALLS.forEach(h => addRoomRow(h.name, h.capacity));
 addRoomBtn.addEventListener('click', () => addRoomRow());
+// Pinned halls (Step 3 "pin class/batch to a hall") are reserved
+// exclusively for their pinned students, and seat that pin's FULL
+// strength in that one hall even past its capacity (see allocate()) —
+// pinning means "this hall and only this hall", not "up to this hall's
+// capacity". So a pinned hall's full pinned headcount — not its raw
+// capacity, and not capped at capacity either — is what's actually
+// covered when estimating how many unpinned halls are still needed for
+// everyone else.
+function pinnedHeadcount(row){
+let count = 0;
+(row.pins || []).forEach(pin => {
+students.forEach(s => {
+if (pin.type === 'class' && s.groupKey === pin.name) count++;
+else if (pin.type === 'batch' && s.batch === pin.name) count++;
+});
+});
+return count;
+}
 function updateSelectedSummary(){
 const el = document.getElementById('selectedSummary');
 const rows = Array.from(roomRows.querySelectorAll('.room-row'));
+// Pinned halls are a separate, already-resolved bucket — their
+// capacity and their students are kept OUT of the general totals below,
+// so the halls-vs-students comparison here is only about what's still
+// unaccounted for.
+const pinnedRows = rows.filter(row => (row.pins || []).length > 0);
+const pinnedStudents = pinnedRows.reduce((s,row) => s + pinnedHeadcount(row), 0);
+const remaining = Math.max(0, students.length - pinnedStudents);
+const pinnedNote = pinnedRows.length
+? `Pinned: ${pinnedRows.length} hall(s) locked in for ${pinnedStudents} student(s) — kept out of the totals below. `
+: '';
 const selectedRows = rows.filter(row => row.querySelector('.roomUse').checked
-&& (parseInt(row.querySelector('.roomCap').value, 10) || 0) > 0);
+&& (parseInt(row.querySelector('.roomCap').value, 10) || 0) > 0
+&& (row.pins || []).length === 0);
 const total = selectedRows.reduce((sum, row) =>
 sum + (parseInt(row.querySelector('.roomCap').value, 10) || 0), 0);
 if (!selectedRows.length){
 el.className = 'status';
-el.textContent = 'No halls ticked yet.';
+el.textContent = pinnedNote + (remaining ? 'No general (unpinned) halls ticked yet.' : 'All remaining students are already covered by pinned halls.');
 return;
 }
-let text = `Ticked: ${selectedRows.length} hall(s), total capacity ${total}.`;
-if (students.length){
-const diff = total - students.length;
+let text = `${pinnedNote}Ticked: ${selectedRows.length} hall(s), total capacity ${total}.`;
+if (remaining){
+const diff = total - remaining;
 if (diff < 0){ el.className = 'status err'; text += ` Short by ${-diff} seat(s).`; }
 else if (diff > 0){ el.className = 'status ok'; text += ` ${diff} seat(s) spare.`; }
 else { el.className = 'status ok'; text += ` Exact match.`; }
 } else {
-el.className = 'status';
+el.className = 'status ok';
+text += ` All remaining students already covered by pinned halls.`;
 }
 el.textContent = text;
 }
 function updateCapacitySummary(){
 const el = document.getElementById('capacitySummary');
 if (!students.length){ el.className = 'status'; el.textContent = ''; return; }
-const caps = Array.from(roomRows.querySelectorAll('.room-row'))
+const allRows = Array.from(roomRows.querySelectorAll('.room-row'));
+const pinnedRows = allRows.filter(row => (row.pins || []).length > 0);
+const pinnedStudents = pinnedRows.reduce((s,row) => s + pinnedHeadcount(row), 0);
+const remaining = Math.max(0, students.length - pinnedStudents);
+const pinnedNote = pinnedRows.length
+? `${pinnedStudents} student(s) already reserved across ${pinnedRows.length} pinned hall(s). `
+: '';
+if (!remaining){
+el.className = 'status ok';
+el.textContent = `${students.length} students loaded — ${pinnedNote}all of them are covered by pinned halls.`;
+return;
+}
+const caps = allRows
+.filter(row => (row.pins || []).length === 0)
 .map(row => parseInt(row.querySelector('.roomCap').value, 10) || 0)
 .filter(c => c > 0)
 .sort((a,b) => b - a);
 if (!caps.length){
 el.className = 'status';
-el.textContent = `${students.length} students loaded. Add halls with capacities below to see how many you'll need.`;
+el.textContent = `${students.length} students loaded. ${pinnedNote}Add unpinned halls with capacities below to see how many you'll need for the remaining ${remaining}.`;
 return;
 }
 let needed = 0, capSum = 0;
 for (const c of caps){
-if (capSum >= students.length) break;
+if (capSum >= remaining) break;
 capSum += c; needed++;
 }
-if (capSum >= students.length){
+if (capSum >= remaining){
 el.className = 'status ok';
-el.textContent = `${students.length} students loaded — needs ${needed} of your ${caps.length} defined hall(s) to seat everyone.`;
+el.textContent = `${students.length} students loaded — ${pinnedNote}needs ${needed} of your ${caps.length} unpinned hall(s) for the remaining ${remaining}.`;
 } else {
 el.className = 'status err';
-el.textContent = `${students.length} students loaded — even all ${caps.length} defined halls (total capacity ${capSum}) fall short by ${students.length - capSum}.`;
+el.textContent = `${students.length} students loaded — ${pinnedNote}even all ${caps.length} unpinned halls (total capacity ${capSum}) fall short of the remaining ${remaining} by ${remaining - capSum}.`;
 }
 }
 const hallsAssignOverlay = document.getElementById('hallsAssignOverlay');
@@ -1084,27 +1146,13 @@ autoHallsStatus.textContent = 'Upload a student list and tick at least one class
 return;
 }
 // Pinned halls (Step 3 "pin class/batch to a hall") are reserved
-// exclusively for their pinned students — any of their seats beyond
-// that pin's own headcount are deliberately left EMPTY, never
-// backfilled by the general pool (see allocate()). Counting a pinned
-// hall's FULL capacity toward "enough capacity for everyone" therefore
-// overstates what's actually usable, causing this function to under-pick
-// unpinned halls — the shortfall then forces extra classes into the
-// single catch-all hall on "All Shuffle" re-runs. Fix: always keep
-// pinned halls ticked (their pinned students can only sit there), but
-// only count their REAL pinned headcount — not raw capacity — toward
-// the total needed.
-function pinnedHeadcount(row){
-let count = 0;
-(row.pins || []).forEach(pin => {
-students.forEach(s => {
-if (pin.type === 'class' && s.groupKey === pin.name) count++;
-else if (pin.type === 'batch' && s.batch === pin.name) count++;
-});
-});
-const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
-return Math.min(count, cap);
-}
+// exclusively for their pinned students, and now seat that pin's FULL
+// strength in that one hall even past its capacity (see allocate()) —
+// pinning means "this hall and only this hall", not "up to this hall's
+// capacity". So a pinned hall's full pinned headcount (via the shared
+// pinnedHeadcount() above) — not its raw capacity — is what's actually
+// covered when estimating how many unpinned halls are still needed for
+// everyone else.
 const pinnedRows = rows.filter(row => row.pins && row.pins.length);
 const unpinnedRows = rows.filter(row => !(row.pins && row.pins.length));
 let cumulative = 0;
@@ -1767,18 +1815,17 @@ const classBreakdown = Object.keys(classCounts)
 .sort((a,b) => b.count - a.count);
 return {
 room, batches: batchesUsed, batchBreakdown, classBreakdown, seatEntries,
-used: seatEntries.length, overflowed: false, pinned: !!pinned
+used: seatEntries.length, overflowed: seatEntries.length > room.capacity, pinned: !!pinned
 };
 }
 // Pinned halls first: a hall with 1 or 2 "pins" set (Step 3) — each pin
 // is either a WHOLE class or one specific BATCH within a class — is
-// reserved EXCLUSIVELY for those students, up to the hall's capacity —
-// it never mixes with any OTHER class/batch, and it's excluded from
-// every pass below (pairing, mop-up, catch-all, exhaustive-fill). With
-// 2 pins, seats split evenly (ceil/floor) between them, same as the
-// normal auto-pairing logic. If a pin has fewer students than its
-// share, the remaining seats are left empty on purpose (the hall stays
-// reserved, not backfilled with someone else).
+// reserved EXCLUSIVELY for those students, in FULL, even past the
+// hall's capacity — it never mixes with any OTHER class/batch, never
+// spills into another hall, and it's excluded from every pass below
+// (pairing, mop-up, catch-all, exhaustive-fill). With 2 pins, both seat
+// in full side by side. A hall that ends up over capacity from its pins
+// is flagged (`overflowed`) with its own note in the UI.
 function pinAvailable(pin){
 if (!pin) return 0;
 if (pin.type === 'class'){
@@ -1811,7 +1858,6 @@ return shuffledMatching;
 return [];
 }
 const pinnedIndices = new Set();
-const pinnedLeftover = []; // students from a pinned class/batch whose designated hall couldn't fit them — must NEVER be seated in any other hall
 rooms.forEach((room, roomIdx) => {
 const pins = (room.pins || []).filter(Boolean).slice(0, 2);
 if (!pins.length) return;
@@ -1819,36 +1865,23 @@ const capacity = room.capacity;
 const seatEntries = [];
 const batchesUsed = [];
 if (pins.length === 1){
-// Drain EVERY matching student out of the shared pool right away — so
-// none of them are ever visible to the normal shuffle/mop-up/catch-all
-// passes for other halls, even if more of them exist than this hall
-// can seat.
+// A pinned batch/class ALWAYS goes entirely into its designated hall —
+// even past capacity — never spilling into any other hall. If the
+// combined pinned strength exceeds the hall's seats, the hall is
+// simply shown as over capacity (flagged in the UI) rather than
+// splitting the group across halls.
 const allTaken = pinTake(pins[0], pinAvailable(pins[0]));
-const take = Math.min(capacity, allTaken.length);
-allTaken.slice(0, take).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
-if (take > 0) batchesUsed.push(pins[0].name);
-pinnedLeftover.push(...allTaken.slice(take));
+allTaken.forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (allTaken.length > 0) batchesUsed.push(pins[0].name);
 } else {
 const allTakenA = pinTake(pins[0], pinAvailable(pins[0]));
 const allTakenB = pinTake(pins[1], pinAvailable(pins[1]));
-let takeA, takeB;
-if (allTakenA.length + allTakenB.length <= capacity){
-// Both pinned batches fit entirely in this one hall — seat everyone,
-// no 50/50 splitting needed (that was the bug: it used to cap each
-// side at half the capacity even when there was room to fit both
-// batches fully).
-takeA = allTakenA.length;
-takeB = allTakenB.length;
-} else {
-// Doesn't all fit — fall back to an even (ceil/floor) split of the
-// available capacity, same as normal auto-pairing.
-takeA = Math.min(Math.ceil(capacity/2), allTakenA.length);
-takeB = Math.min(capacity - Math.ceil(capacity/2), allTakenB.length);
-}
-shuffle(allTakenA.slice(0, takeA).concat(allTakenB.slice(0, takeB))).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
-if (takeA > 0) batchesUsed.push(pins[0].name);
-if (takeB > 0) batchesUsed.push(pins[1].name);
-pinnedLeftover.push(...allTakenA.slice(takeA), ...allTakenB.slice(takeB));
+// Both pinned batches/classes seat in FULL here, regardless of whether
+// their combined strength fits the hall's capacity — pinning means
+// "this hall and only this hall", not "up to this hall's capacity".
+shuffle(allTakenA.concat(allTakenB)).forEach((st, i) => seatEntries.push({student: st, seatInRow: i + 1}));
+if (allTakenA.length > 0) batchesUsed.push(pins[0].name);
+if (allTakenB.length > 0) batchesUsed.push(pins[1].name);
 }
 roomResultsByIndex[roomIdx] = buildRoomResult(room, seatEntries, batchesUsed, true);
 pinnedIndices.add(roomIdx);
@@ -1938,18 +1971,18 @@ spare -= take;
 // it has to, so the "too many classes in one room" problem stays
 // confined to a single, clearly-flagged hall instead of spreading
 // across every hall that happened to have a small-class shortfall gap.
-// Pinned halls are never used as the catch-all.
+// Pinned halls are never used as the catch-all. A class already seated
+// in this hall is NEVER topped up further here — that would push it
+// past its already-paired share (the exact "one class ends up over
+// half the room" bug this comment is guarding against). If nothing NEW
+// fits, the remaining students stay as genuine leftover, handled by the
+// Pending Students panel below instead.
 const lastHallIdx = processingOrder[processingOrder.length - 1];
 const catchAllRoom = lastHallIdx !== undefined ? roomResultsByIndex[lastHallIdx] : null;
 if (catchAllRoom){
 let spare = catchAllRoom.room.capacity - catchAllRoom.used;
 while (spare > 0){
-// Prefer a class NOT already in this hall — piling more of a class
-// that's already here defeats the "hard to copy" point of mixing
-// classes in the first place. Only reuse an existing class here if
-// truly nothing else is left.
-let candidates = pool.filter(b => b.students.length > 0 && !catchAllRoom.batches.includes(b.name));
-if (!candidates.length) candidates = pool.filter(b => b.students.length > 0);
+const candidates = pool.filter(b => b.students.length > 0 && !catchAllRoom.batches.includes(b.name));
 if (!candidates.length) break;
 candidates.sort((a,b) => b.students.length - a.students.length);
 const chosen = candidates[0];
@@ -1961,30 +1994,25 @@ spare -= take;
 }
 // Final exhaustive pass: if students are STILL left over after the single
 // catch-all hall (e.g. that hall itself ran out of room), spread them
-// across ANY non-pinned hall that still has spare capacity anywhere —
-// even past the 2-class cap — rather than reporting a shortfall when
-// seats genuinely exist elsewhere. Pinned halls are never touched, even
-// here, so a class you've deliberately isolated stays isolated. Halls
-// that DON'T already contain this class are tried first, so a class
-// never silently piles up past its intended share in one room; only if
-// every hall with spare capacity already has this class do we top one
-// of them up. Only students who truly have nowhere to fit remain as
-// leftover after this.
+// across ANY non-pinned hall that still has spare capacity AND doesn't
+// already hold this class — even past the 2-class cap — rather than
+// reporting a shortfall when seats genuinely exist elsewhere. Pinned
+// halls are never touched, even here, so a class you've deliberately
+// isolated stays isolated. A hall that already holds this class is
+// NEVER topped up further here — that used to be allowed as a last
+// fallback, which is exactly what let a class quietly pile up past its
+// already-paired ~50% share in a hall it was already seated in. Only
+// students who truly have nowhere to fit without breaking that rule
+// remain as leftover after this — same as offline's existing Pending
+// Students panel already handles.
 const stillLeftoverGroups = pool.filter(b => b.students.length > 0);
 stillLeftoverGroups.forEach(b => {
 while (b.students.length > 0){
-let roomsBySpare = roomResults
+const roomsBySpare = roomResults
 .filter(r => !r.pinned && !r.batches.includes(b.name))
 .map(r => ({r, spare: r.room.capacity - r.used}))
 .filter(x => x.spare > 0)
 .sort((x, y) => y.spare - x.spare);
-if (!roomsBySpare.length){
-roomsBySpare = roomResults
-.filter(r => !r.pinned)
-.map(r => ({r, spare: r.room.capacity - r.used}))
-.filter(x => x.spare > 0)
-.sort((x, y) => y.spare - x.spare);
-}
 if (!roomsBySpare.length) break;
 const {r, spare} = roomsBySpare[0];
 const take = Math.min(spare, b.students.length);
@@ -1994,14 +2022,9 @@ taken.forEach(st => addExtra(r, st, true));
 });
 const poolLeftover = pool.filter(b => b.students.length > 0)
 .map(b => ({batch: b.name, count: b.students.length}));
-const pinnedLeftoverGrouped = {};
-pinnedLeftover.forEach(s => { pinnedLeftoverGrouped[s.batch] = (pinnedLeftoverGrouped[s.batch]||0) + 1; });
-const pinnedLeftoverList = Object.keys(pinnedLeftoverGrouped)
-.map(b => ({batch: b, count: pinnedLeftoverGrouped[b]}));
-const leftover = [...poolLeftover, ...pinnedLeftoverList];
+const leftover = poolLeftover;
 const leftoverStudents = [];
 pool.forEach(b => { if (b.students.length > 0) leftoverStudents.push(...b.students); });
-leftoverStudents.push(...pinnedLeftover);
 return {roomResults, leftover, leftoverStudents};
 }
 function renderResults(data){
@@ -2035,7 +2058,8 @@ const clsTotal = r.classBreakdown.find(c => c.name === b);
 return `<span class="badge">${b}: ${clsTotal ? clsTotal.count : 0}</span>`;
 }).join('')}</div>
 <div class="batch-breakdown">${r.batchBreakdown.map(b => `<span class="mini-badge">${b.name}: ${b.count}</span>`).join('')}</div>
-${r.overflowed && !r.manuallyAdjusted ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
+${r.overflowed && r.pinned ? `<div class="overflow-note">Note: this hall is pinned — the pinned batch(es) were kept together here in full (${r.used}/${r.room.capacity}), even though that goes past this hall's capacity.</div>` : ''}
+${r.overflowed && !r.pinned && !r.manuallyAdjusted ? `<div class="overflow-note">Note: this hall has ${r.batches.length} classes — the last few leftover students needed a spot and every other hall was full.</div>` : ''}
 ${pendingMoved.length ? `<div class="overflow-note no-print">Manually moved in from pending: ${pendingMoved.map(e => {
 const seatIdx = r.seatEntries.indexOf(e);
 return `<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 8px 2px 0;">${e.student.name}<button type="button" class="removeManualBtn" data-hall="${r.room.name.replace(/"/g,'&quot;')}" data-seat-idx="${seatIdx}" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:10px;width:16px;height:16px;line-height:1;font-size:11px;cursor:pointer;padding:0;">&times;</button></span>`;
