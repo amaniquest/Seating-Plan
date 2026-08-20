@@ -589,20 +589,26 @@ body{background:#fff;}
 <div class="step-head">
 <div class="step-num">3</div>
 <h2>Time slots</h2>
-<div class="hint">Transport students are fixed to Slot 1</div>
+<div class="hint" id="slotsHint">Transport students are fixed to Slot 1</div>
 </div>
 <div class="status" style="margin-bottom:14px;">Only the classes/batches ticked in Step 2 are included here — untick anything not taking this test before assigning slots.</div>
-<div style="max-width:220px;margin-bottom:16px;">
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px;">
+<div style="max-width:220px;">
 <label for="slotCapacity">Seats per slot (capacity)</label>
 <input type="number" id="slotCapacity" min="1" value="58">
 </div>
+<div style="max-width:260px;">
+<label for="transportFixedSlotSelect">Transport students fixed to</label>
+<select id="transportFixedSlotSelect" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;color:var(--ink);background:#fff;font-family:var(--font-body);">
+<option value="slot1">Slot 1</option>
+<option value="slot2">Slot 2</option>
+<option value="slot3">Slot 3</option>
+</select>
+</div>
+</div>
 <table class="data" style="margin-top:0;margin-bottom:16px;">
-<thead><tr><th>Slot</th><th>Timing</th><th>Who</th></tr></thead>
-<tbody>
-<tr><td>Slot 1</td><td>9:00 AM – 12:00 PM</td><td>Transport students (fixed) + overflow if Slots 2 &amp; 3 fill up</td></tr>
-<tr><td>Slot 2</td><td>12:15 PM – 3:15 PM</td><td>Remaining students (shuffled, filled first)</td></tr>
-<tr><td>Slot 3</td><td>3:30 PM – 6:30 PM</td><td>Remaining students (shuffled, filled first)</td></tr>
-</tbody>
+<thead><tr><th>Slot</th><th style="width:260px;">Timing</th><th>Who</th></tr></thead>
+<tbody id="slotTimingRows"></tbody>
 </table>
 </section>
 <!-- STEP 4: Generate -->
@@ -845,6 +851,48 @@ const SLOT_DEFS = [
 {key:'slot2', label:'Slot 2', timing:'12:15 PM – 3:15 PM', full:'Slot 2 (12:15 PM – 3:15 PM)'},
 {key:'slot3', label:'Slot 3', timing:'3:30 PM – 6:30 PM', full:'Slot 3 (3:30 PM – 6:30 PM)'}
 ];
+// Which slot transport students are fixed to — Slot 1 by default, but
+// changeable from the dropdown in Step 3 (e.g. if the transport
+// schedule works better with a different slot in future).
+let transportFixedSlot = 'slot1';
+const transportFixedSlotSelect = document.getElementById('transportFixedSlotSelect');
+const slotTimingRows = document.getElementById('slotTimingRows');
+const slotsHint = document.getElementById('slotsHint');
+function updateSlotsHint(){
+const fixedLabel = SLOT_DEFS.find(d => d.key === transportFixedSlot).label;
+slotsHint.textContent = `Transport students are fixed to ${fixedLabel}`;
+generateHint.textContent = testType === 'online'
+? `Transport students fixed to ${fixedLabel} · rest shuffled across the other two slots`
+: generateHint.textContent;
+}
+function renderSlotTimingRows(){
+slotTimingRows.innerHTML = SLOT_DEFS.map(def => {
+const isFixed = def.key === transportFixedSlot;
+const who = isFixed
+? 'Transport students (fixed) + overflow if the other two slots fill up'
+: 'Remaining students (shuffled, filled first)';
+return `<tr>
+<td>${def.label}</td>
+<td><input type="text" class="slotTimingInput" data-slot="${def.key}" value="${escapeHtml(def.timing)}" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13.5px;color:var(--ink);font-family:var(--font-body);"></td>
+<td>${who}</td>
+</tr>`;
+}).join('');
+slotTimingRows.querySelectorAll('.slotTimingInput').forEach(inp => {
+inp.addEventListener('input', () => {
+const def = SLOT_DEFS.find(d => d.key === inp.dataset.slot);
+def.timing = inp.value;
+def.full = `${def.label} (${inp.value})`;
+});
+});
+}
+if (transportFixedSlotSelect){
+transportFixedSlotSelect.addEventListener('change', () => {
+transportFixedSlot = transportFixedSlotSelect.value;
+updateSlotsHint();
+renderSlotTimingRows();
+});
+}
+renderSlotTimingRows();
 function setTestType(type){
 testType = type;
 hallsSection.style.display = type === 'offline' ? '' : 'none';
@@ -862,6 +910,7 @@ generateHint.textContent = type === 'offline'
 : (type === 'online'
 ? 'Transport students fixed to Slot 1 · rest shuffled across Slots 2 & 3'
 : 'Manual counts · classes mixed so the same class never sits next to itself');
+if (type === 'online') updateSlotsHint();
 results.innerHTML = '';
 admissionResults.innerHTML = '';
 lastResults = null;
@@ -2635,28 +2684,35 @@ if (existsInFull) excludedBySelection.push(t); else unmatchedTransport.push(t);
 });
 return {transportMatched, remaining, unmatchedTransport, excludedBySelection};
 }
-// Fills Slot 2 & Slot 3 first (up to `capacity` seats each, shuffled and
-// split as evenly as possible), then hands back whatever didn't fit as
-// overflow — that overflow is what computeSlots() below routes into
-// Slot 1's remaining free seats (transport students always keep their
-// seats in Slot 1; only the leftover space there is used for overflow).
+// Fills the two NON-fixed slots first (up to `capacity` seats each,
+// shuffled and split as evenly as possible), then hands back whatever
+// didn't fit as overflow — that overflow is what computeSlots() below
+// routes into the fixed slot's remaining free space (transport students
+// always keep their seats in the fixed slot; only the leftover space
+// there is used for overflow).
 function distributeNonTransport(list, capacity){
 const shuffled = shuffle(list);
 const totalCap = capacity * 2;
 const withinCap = shuffled.slice(0, totalCap);
 const overflow = shuffled.slice(totalCap);
-const slot2 = [], slot3 = [];
-withinCap.forEach((s, i) => { (i % 2 === 0 ? slot2 : slot3).push(s); });
-return {slot2, slot3, overflow};
+const a = [], b = [];
+withinCap.forEach((s, i) => { (i % 2 === 0 ? a : b).push(s); });
+return {a, b, overflow};
 }
-function computeSlots(transportMatched, nonTransportPool, capacity){
-const {slot2, slot3, overflow} = distributeNonTransport(nonTransportPool, capacity);
-const slot1FreeSpace = Math.max(0, capacity - transportMatched.length);
+function computeSlots(transportMatched, nonTransportPool, capacity, fixedSlotKey){
+fixedSlotKey = fixedSlotKey || transportFixedSlot;
+const otherKeys = SLOT_DEFS.map(d => d.key).filter(k => k !== fixedSlotKey);
+const {a, b, overflow} = distributeNonTransport(nonTransportPool, capacity);
+const fixedFreeSpace = Math.max(0, capacity - transportMatched.length);
 const shuffledOverflow = shuffle(overflow);
-const toSlot1 = shuffledOverflow.slice(0, slot1FreeSpace);
-const unplaced = shuffledOverflow.slice(slot1FreeSpace);
-const slot1 = transportMatched.concat(toSlot1);
-return {slot1, slot2, slot3, unplaced};
+const toFixed = shuffledOverflow.slice(0, fixedFreeSpace);
+const unplaced = shuffledOverflow.slice(fixedFreeSpace);
+const fixedList = transportMatched.concat(toFixed);
+const result = {unplaced, fixedSlotKey};
+result[fixedSlotKey] = fixedList;
+result[otherKeys[0]] = a;
+result[otherKeys[1]] = b;
+return result;
 }
 function assignSlots(){
 genStatus.className = 'status';
@@ -2682,7 +2738,8 @@ slot3: computed.slot3,
 unplaced: computed.unplaced,
 unmatchedTransport,
 excludedBySelection,
-capacity
+capacity,
+fixedSlotKey: computed.fixedSlotKey
 };
 renderSlotResults(lastSlotResults);
 reshuffleSlotsBtn.style.display = 'inline-block';
@@ -2694,7 +2751,7 @@ genStatus.textContent = 'Slots assigned.';
 function reshuffleSlots(){
 if (!lastSlotResults) return;
 const capacity = getSlotCapacity();
-const computed = computeSlots(lastSlotResults.transportMatched, lastSlotResults.nonTransportPool, capacity);
+const computed = computeSlots(lastSlotResults.transportMatched, lastSlotResults.nonTransportPool, capacity, lastSlotResults.fixedSlotKey);
 lastSlotResults = {...lastSlotResults, slot1: computed.slot1, slot2: computed.slot2, slot3: computed.slot3, unplaced: computed.unplaced, capacity};
 renderSlotResults(lastSlotResults);
 genStatus.className = 'status ok';
@@ -2736,7 +2793,8 @@ if (data.excludedBySelection && data.excludedBySelection.length){
 html += `<div class="info-note no-print">${data.excludedBySelection.length} transport student(s) belong to a class/batch not ticked in Step 2, so they were skipped (not an error): ${data.excludedBySelection.map(t => t.name || t.roll).join(', ')}.</div>`;
 }
 if (data.transportMatched.length > data.capacity){
-html += `<div class="leftover no-print"><strong>Note:</strong> Slot 1 has ${data.transportMatched.length} transport student(s), above the configured capacity of ${data.capacity}. All transport students have still been kept in Slot 1 since that's a fixed requirement.</div>`;
+const fixedLabel = SLOT_DEFS.find(d => d.key === (data.fixedSlotKey || transportFixedSlot)).label;
+html += `<div class="leftover no-print"><strong>Note:</strong> ${fixedLabel} has ${data.transportMatched.length} transport student(s), above the configured capacity of ${data.capacity}. All transport students have still been kept in ${fixedLabel} since that's a fixed requirement.</div>`;
 }
 if (data.unplaced.length){
 html += `<div class="leftover no-print"><strong>Warning:</strong> All 3 slots are full at ${data.capacity} seats each. ${data.unplaced.length} student(s) could not be placed in any slot — increase the seats-per-slot capacity or move them manually.</div>`;
