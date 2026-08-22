@@ -287,6 +287,8 @@ box-shadow:var(--shadow-sm);transition:background .2s,box-shadow .2s,transform .
 button.action:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 button.action:active{transform:translateY(0);box-shadow:var(--shadow-sm);}
 button.action:disabled{background:#B7BEC9;border-color:#B7BEC9;cursor:not-allowed;box-shadow:none;transform:none;}
+button.ghost:disabled{background:#F1F3F5;border-color:#D5DADE;color:#9AA3AB;cursor:not-allowed;}
+button.ghost:disabled:hover{background:#F1F3F5;color:#9AA3AB;transform:none;box-shadow:none;}
 button.ghost{
 background:#fff;border:1.5px solid var(--ink);color:var(--ink);padding:9.5px 18px;border-radius:var(--radius-sm);
 cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-body);transition:background .18s,color .18s,box-shadow .18s,transform .15s;
@@ -628,9 +630,9 @@ body{background:#fff;}
 </div>
 <div class="row-actions" id="onlineGenerateControls" style="display:none;">
 <button class="action" id="assignSlotsBtn" type="button">Assign slots</button>
-<button class="ghost" id="reshuffleSlotsBtn" type="button" style="display:none;">Reshuffle (slots 2 &amp; 3)</button>
-<button class="ghost" id="slotExcelBtn" type="button" style="display:none;">Download Slot Assignment Excel</button>
-<button class="ghost" id="slotAttendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
+<button class="ghost" id="reshuffleSlotsBtn" type="button" style="display:none;">Reshuffle non-fixed slots</button>
+<button class="ghost" id="slotExcelBtn" type="button" style="display:none;" disabled>Download Slot Assignment Excel</button>
+<button class="ghost" id="slotAttendanceBtn" type="button" style="display:none;" disabled>Download Attendance Excel</button>
 </div>
 <div class="no-print" id="admSlotChoiceWrap" style="display:none;margin-bottom:16px;">
 <label>Generate for which slot?</label>
@@ -753,6 +755,17 @@ let selectedBatches = new Set(); // individual batch names currently ticked
 let lastResults = null; // for reshuffle without re-reading rooms
 let transportRaw = []; // {name, roll} parsed from the transport students file
 let lastSlotResults = null; // {slot1, slot2, slot3, unmatchedTransport}
+// Manual per-student slot moves (and every fresh Assign/Reshuffle) mark
+// the plan as unsaved — Excel/Attendance downloads stay disabled until
+// "Save Final Slot Plan" is confirmed, so an export can never quietly
+// go out of sync with edits still sitting on screen.
+let slotEditsUnsaved = false;
+function updateSlotSaveUI(){
+slotExcelBtn.disabled = slotEditsUnsaved;
+slotAttendanceBtn.disabled = slotEditsUnsaved;
+slotExcelBtn.title = slotEditsUnsaved ? 'Save the slot plan first' : '';
+slotAttendanceBtn.title = slotEditsUnsaved ? 'Save the slot plan first' : '';
+}
 let testType = 'offline'; // 'offline' | 'online' | 'admission'
 let lastAdmissionResults = null; // {slotKey,label,timing,roomResults,leftover}
 // Pre-filled halls — the institute's actual room list, loaded by default
@@ -2611,7 +2624,7 @@ boxCell.border = THIN_BORDER;
 boxCell.alignment = {horizontal:'center', vertical:'middle'};
 ws.getCell(summaryRow.number, 7).border = THIN_BORDER;
 }
-lastResults.roomResults.forEach(r => {
+lastResults.roomResults.forEach((r, idx) => {
 const entries = r.seatEntries.slice().sort((a, b) => a.student.name.localeCompare(b.student.name, undefined, {sensitivity:'base'}));
 const bandRow = ws.addRow([`${r.room.name}   |   Students ${entries.length}`]);
 ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
@@ -2637,6 +2650,12 @@ cell.alignment = (colNumber === 2 || colNumber === 3)
 addSummaryBox(entries.length);
 const spacer = ws.addRow([]);
 spacer.height = ROW_HEIGHT;
+// Each hall's attendance block starts on its own printed page — a
+// manual page break right after its spacer row, skipped only on the
+// very last block (unless a "Not Seated" section follows it) so we
+// don't leave a trailing blank page.
+const isLastRoom = idx === lastResults.roomResults.length - 1;
+if (!isLastRoom || leftover.length) spacer.addPageBreak();
 });
 const tag = examFileTag();
 const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
@@ -2745,6 +2764,8 @@ renderSlotResults(lastSlotResults);
 reshuffleSlotsBtn.style.display = 'inline-block';
 slotExcelBtn.style.display = 'inline-block';
 slotAttendanceBtn.style.display = 'inline-block';
+slotEditsUnsaved = true;
+updateSlotSaveUI();
 genStatus.className = 'status ok';
 genStatus.textContent = 'Slots assigned.';
 }
@@ -2754,6 +2775,8 @@ const capacity = getSlotCapacity();
 const computed = computeSlots(lastSlotResults.transportMatched, lastSlotResults.nonTransportPool, capacity, lastSlotResults.fixedSlotKey);
 lastSlotResults = {...lastSlotResults, slot1: computed.slot1, slot2: computed.slot2, slot3: computed.slot3, unplaced: computed.unplaced, capacity};
 renderSlotResults(lastSlotResults);
+slotEditsUnsaved = true;
+updateSlotSaveUI();
 genStatus.className = 'status ok';
 genStatus.textContent = 'Slots reshuffled.';
 }
@@ -2768,6 +2791,62 @@ const batchCompare = (a.batch||'').localeCompare(b.batch||'', undefined, {sensit
 if (batchCompare !== 0) return batchCompare;
 return (a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'});
 });
+}
+function findStudentByIdentity(list, roll, name){
+if (roll) return list.findIndex(s => (s.roll||'') === roll);
+return list.findIndex(s => (s.name||'') === name);
+}
+// Manually moving one student to a different slot pulls a random
+// swap-back partner out of that target slot into the vacated seat, so
+// both slots keep the same total headcount — "as soon as we change one
+// student's slot, another student automatically comes in to fill it."
+// Transport-fixed students are never moved and never picked as a
+// swap-back partner, so the transport guarantee holds either way.
+function manualMoveStudent(fromKey, roll, name, toKey){
+if (!lastSlotResults || fromKey === toKey) return;
+const fromList = lastSlotResults[fromKey];
+const toList = lastSlotResults[toKey];
+const transportSet = new Set(lastSlotResults.transportMatched);
+const idx = findStudentByIdentity(fromList, roll, name);
+if (idx === -1) return;
+const student = fromList[idx];
+if (transportSet.has(student)){
+genStatus.className = 'status err';
+genStatus.textContent = "Transport students stay fixed to their slot and can't be moved manually.";
+renderSlotResults(lastSlotResults);
+return;
+}
+const candidates = toList.filter(s => !transportSet.has(s));
+if (!candidates.length){
+genStatus.className = 'status err';
+genStatus.textContent = `Can't move — ${SLOT_DEFS.find(d => d.key === toKey).label} has no non-transport student available to swap back automatically.`;
+renderSlotResults(lastSlotResults);
+return;
+}
+const partner = candidates[Math.floor(Math.random() * candidates.length)];
+fromList.splice(idx, 1);
+toList.splice(toList.indexOf(partner), 1);
+toList.push(student);
+fromList.push(partner);
+slotEditsUnsaved = true;
+updateSlotSaveUI();
+renderSlotResults(lastSlotResults);
+genStatus.className = 'status ok';
+genStatus.textContent = `Moved ${student.name} to ${SLOT_DEFS.find(d => d.key === toKey).label}; swapped ${partner.name} into ${SLOT_DEFS.find(d => d.key === fromKey).label} to keep both slots full. Remember to Save when you're done.`;
+}
+function saveSlotPlan(){
+if (!lastSlotResults) return;
+askConfirm(
+'Save final slot plan?',
+"This locks in the current slot assignments — including any manual moves — as final. Excel and Attendance downloads will use exactly this saved version.",
+() => {
+slotEditsUnsaved = false;
+updateSlotSaveUI();
+renderSlotResults(lastSlotResults);
+genStatus.className = 'status ok';
+genStatus.textContent = 'Slot plan saved. Excel downloads are now available.';
+}
+);
 }
 function removeUnmatchedTransport(){
 if (!lastSlotResults || !lastSlotResults.unmatchedTransport.length) return;
@@ -2815,9 +2894,17 @@ html += `<div class="room-card">
 <div class="batches">${classBreakdown.map(c => `<span class="badge">${c.name}: ${c.count}</span>`).join('')}</div>
 ${anyTransportHere ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px;"><span style="display:inline-block;width:11px;height:11px;background:#FDE3D0;border:1px solid var(--maroon);border-radius:2px;vertical-align:-1px;margin-right:5px;"></span>Transport student</div>` : ''}
 <table class="data">
-<thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th></tr></thead>
+<thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th><th class="no-print" style="width:150px;">Move to</th></tr></thead>
 <tbody>
-${sortedList.map(s => `<tr${transportSet.has(s) ? ' style="background:#FDE3D0;"' : ''}><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td></tr>`).join('')}
+${sortedList.map(s => {
+const isTransport = transportSet.has(s);
+const moveCell = isTransport
+? `<span style="color:var(--slate);font-size:11.5px;">fixed</span>`
+: `<select class="slotMoveSelect" data-from="${def.key}" data-roll="${escapeHtml(s.roll||'')}" data-name="${escapeHtml(s.name||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:12.5px;color:var(--ink);font-family:var(--font-body);">
+${SLOT_DEFS.map(d => `<option value="${d.key}" ${d.key===def.key?'selected':''}>${d.label}</option>`).join('')}
+</select>`;
+return `<tr${isTransport ? ' style="background:#FDE3D0;"' : ''}><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td><td class="no-print">${moveCell}</td></tr>`;
+}).join('')}
 </tbody>
 </table>
 </div>`;
@@ -2836,7 +2923,22 @@ ${sortedUnplaced.map(s => `<tr><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}<
 </div>`;
 
 }
+html += `<div class="room-card no-print" style="text-align:center;">
+<div style="margin-bottom:12px;color:var(--slate);font-size:13px;">${slotEditsUnsaved
+? 'You have changes not yet saved — save the plan to enable the Excel downloads above.'
+: 'Saved — the Excel downloads above match exactly what\'s shown here.'}</div>
+<button class="action" type="button" id="saveSlotPlanBtn">Save Final Slot Plan</button>
+</div>`;
 results.innerHTML = html;
+document.getElementById('saveSlotPlanBtn').addEventListener('click', saveSlotPlan);
+results.querySelectorAll('.slotMoveSelect').forEach(sel => {
+const originalValue = sel.value;
+sel.addEventListener('change', () => {
+const toKey = sel.value;
+if (toKey === originalValue) return;
+manualMoveStudent(sel.dataset.from, sel.dataset.roll, sel.dataset.name, toKey);
+});
+});
 const removeBtn = document.getElementById('removeUnmatchedTransportBtn');
 if (removeBtn) removeBtn.addEventListener('click', removeUnmatchedTransport);
 }
@@ -2880,6 +2982,11 @@ genStatus.className = 'status err';
 genStatus.textContent = 'Assign slots first.';
 return;
 }
+if (slotEditsUnsaved){
+genStatus.className = 'status err';
+genStatus.textContent = 'Save the slot plan first — see the Save button below the results.';
+return;
+}
 const wb = new ExcelJS.Workbook();
 buildSlotSheet(wb, lastSlotResults);
 const tag = examFileTag();
@@ -2890,6 +2997,11 @@ async function exportSlotAttendanceExcel(){
 if (!lastSlotResults){
 genStatus.className = 'status err';
 genStatus.textContent = 'Assign slots first.';
+return;
+}
+if (slotEditsUnsaved){
+genStatus.className = 'status err';
+genStatus.textContent = 'Save the slot plan first — see the Save button below the results.';
 return;
 }
 const wb = new ExcelJS.Workbook();
@@ -2932,7 +3044,7 @@ const lists = [
 {def: SLOT_DEFS[1], list: lastSlotResults.slot2},
 {def: SLOT_DEFS[2], list: lastSlotResults.slot3}
 ];
-lists.forEach(({def, list}) => {
+lists.forEach(({def, list}, idx) => {
 const entries = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
 const bandRow = ws.addRow([`${def.label} (${def.timing})   |   Students ${entries.length}`]);
 ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
@@ -2958,6 +3070,11 @@ cell.alignment = (colNumber === 2 || colNumber === 3)
 addSummaryBox(entries.length);
 const spacer = ws.addRow([]);
 spacer.height = ROW_HEIGHT;
+// Same reasoning as the offline version: each slot's attendance block
+// gets its own printed page, skipping only a trailing break with
+// nothing left to follow it.
+const isLastSlot = idx === lists.length - 1;
+if (!isLastSlot || lastSlotResults.unplaced.length) spacer.addPageBreak();
 });
 if (lastSlotResults.unplaced.length){
 const entries = lastSlotResults.unplaced.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
@@ -3043,16 +3160,24 @@ allShuffleBtn.addEventListener('click', () => askConfirm(
 printBtn.addEventListener('click', () => window.print());
 excelBtn.addEventListener('click', exportToExcel);
 attendanceBtn.addEventListener('click', exportAttendanceExcel);
-assignSlotsBtn.addEventListener('click', () => askConfirm(
+assignSlotsBtn.addEventListener('click', () => {
+const fixedLabel = SLOT_DEFS.find(d => d.key === transportFixedSlot).label;
+const otherLabels = SLOT_DEFS.filter(d => d.key !== transportFixedSlot).map(d => d.label).join(' & ');
+askConfirm(
 'Assign slots?',
-'This will fix transport students to Slot 1 and shuffle the rest across Slots 2 & 3 based on your current settings.',
+`This will fix transport students to ${fixedLabel} and shuffle the rest across ${otherLabels} based on your current settings.`,
 assignSlots
-));
-reshuffleSlotsBtn.addEventListener('click', () => askConfirm(
-'Reshuffle slots 2 & 3?',
-'This reshuffles the non-transport students across Slots 2 & 3 again.',
+);
+});
+reshuffleSlotsBtn.addEventListener('click', () => {
+const fixedKey = lastSlotResults ? lastSlotResults.fixedSlotKey : transportFixedSlot;
+const otherLabels = SLOT_DEFS.filter(d => d.key !== fixedKey).map(d => d.label).join(' & ');
+askConfirm(
+`Reshuffle ${otherLabels}?`,
+`This reshuffles the non-transport students across ${otherLabels} again.`,
 reshuffleSlots
-));
+);
+});
 slotExcelBtn.addEventListener('click', exportSlotExcel);
 slotAttendanceBtn.addEventListener('click', exportSlotAttendanceExcel);
 const resetBtn = document.getElementById('resetBtn');
