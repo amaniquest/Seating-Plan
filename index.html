@@ -208,6 +208,8 @@ input:hover{border-color:#AFC7D4;}
 input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 @media(max-width:700px){.grid3{grid-template-columns:1fr;}}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+@media(max-width:700px){.grid2{grid-template-columns:1fr;}}
 .file-drop{
 border:1.5px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;
 color:var(--slate);cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;
@@ -473,18 +475,14 @@ body{background:#fff;}
 </label>
 </div>
 </div>
-<div class="grid3">
+<div class="grid2">
 <div>
-<label for="instName">Institute name</label>
-<input type="text" id="instName" placeholder="e.g. Sunrise Academy">
+<label for="examTitle">Exam / test title <span style="color:var(--red);">*</span></label>
+<input type="text" id="examTitle" placeholder="e.g. Monthly Test - July" required>
 </div>
 <div>
-<label for="examTitle">Exam / test title</label>
-<input type="text" id="examTitle" placeholder="e.g. Monthly Test - July">
-</div>
-<div>
-<label for="examDate">Date</label>
-<input type="date" id="examDate">
+<label for="examDate">Date <span style="color:var(--red);">*</span></label>
+<input type="date" id="examDate" required>
 </div>
 </div>
 </section>
@@ -612,6 +610,17 @@ body{background:#fff;}
 <thead><tr><th>Slot</th><th style="width:260px;">Timing</th><th>Who</th></tr></thead>
 <tbody id="slotTimingRows"></tbody>
 </table>
+<label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13.5px;color:var(--ink);letter-spacing:0;margin-bottom:0;cursor:pointer;">
+<input type="checkbox" id="subjectiveTimingEnabled" style="width:16px;height:16px;margin:0;">
+Add subjective-test timings for this exam (optional — only when there's a subjective portion)
+</label>
+<div id="subjectiveTimingBlock" style="display:none;margin-top:12px;">
+<table class="data" style="margin-top:0;margin-bottom:6px;">
+<thead><tr><th colspan="2">Extra Slots for Subjective Test</th></tr></thead>
+<tbody id="subjectiveTimingRows"></tbody>
+</table>
+<div style="color:var(--slate);font-size:12px;margin-bottom:4px;">Leave a slot blank if it has no subjective portion. Only used in the Slot Assignment Excel; the Attendance Excel doesn't show it.</div>
+</div>
 </section>
 <!-- STEP 4: Generate -->
 <section class="step no-print">
@@ -657,7 +666,7 @@ body{background:#fff;}
 <div class="status" id="genStatus"></div>
 </section>
 <div class="print-meta">
-<h2 id="printInst"></h2>
+<h2 id="printInst">iQuest</h2>
 <div class="line" id="printExam"></div>
 </div>
 <div id="results"></div>
@@ -818,6 +827,21 @@ const printBtn = document.getElementById('printBtn');
 const excelBtn = document.getElementById('excelBtn');
 const attendanceBtn = document.getElementById('attendanceBtn');
 const genStatus = document.getElementById('genStatus');
+// Exam / test title and Date are mandatory — checked before any of the
+// three "generate" actions (Offline, Online, Admission), since none of
+// these buttons live inside a native <form> that would enforce the
+// `required` attribute on its own.
+function examDetailsValid(){
+const title = document.getElementById('examTitle').value.trim();
+const date = document.getElementById('examDate').value;
+if (!title || !date){
+genStatus.className = 'status err';
+genStatus.textContent = 'Please fill in the Exam / test title and Date at the top before generating.';
+document.getElementById(title ? 'examDate' : 'examTitle').focus();
+return false;
+}
+return true;
+}
 const results = document.getElementById('results');
 const hallsSection = document.getElementById('hallsSection');
 const slotsSection = document.getElementById('slotsSection');
@@ -898,6 +922,33 @@ def.full = `${def.label} (${inp.value})`;
 });
 });
 }
+// Extra Slots for Subjective Test — one optional free-text timing per
+// main slot (a subjective/practical portion tied to whichever main slot
+// a student sits in), NOT a 4th assignable slot. Purely informational:
+// shown only in the Slot Assignment Excel, never in Attendance.
+const SUBJECTIVE_TIMINGS = {slot1:'', slot2:'', slot3:''};
+const subjectiveTimingRows = document.getElementById('subjectiveTimingRows');
+function renderSubjectiveTimingRows(){
+subjectiveTimingRows.innerHTML = SLOT_DEFS.map(def => `<tr>
+<td style="width:120px;">${def.label}</td>
+<td><input type="text" class="subjectiveTimingInput" data-slot="${def.key}" value="${escapeHtml(SUBJECTIVE_TIMINGS[def.key])}" placeholder="e.g. 1:00 PM – 1:30 PM" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13.5px;color:var(--ink);font-family:var(--font-body);"></td>
+</tr>`).join('');
+subjectiveTimingRows.querySelectorAll('.subjectiveTimingInput').forEach(inp => {
+inp.addEventListener('input', () => { SUBJECTIVE_TIMINGS[inp.dataset.slot] = inp.value; });
+});
+}
+const subjectiveTimingEnabled = document.getElementById('subjectiveTimingEnabled');
+const subjectiveTimingBlock = document.getElementById('subjectiveTimingBlock');
+subjectiveTimingEnabled.addEventListener('change', () => {
+subjectiveTimingBlock.style.display = subjectiveTimingEnabled.checked ? 'block' : 'none';
+if (!subjectiveTimingEnabled.checked){
+// Turning it off clears the values too — not just hides them — so a
+// timing typed in once and then hidden again can never sneak into a
+// later Excel export by accident.
+SLOT_DEFS.forEach(def => { SUBJECTIVE_TIMINGS[def.key] = ''; });
+renderSubjectiveTimingRows();
+}
+});
 if (transportFixedSlotSelect){
 transportFixedSlotSelect.addEventListener('change', () => {
 transportFixedSlot = transportFixedSlotSelect.value;
@@ -906,6 +957,7 @@ renderSlotTimingRows();
 });
 }
 renderSlotTimingRows();
+renderSubjectiveTimingRows();
 function setTestType(type){
 testType = type;
 hallsSection.style.display = type === 'offline' ? '' : 'none';
@@ -2147,7 +2199,6 @@ return {roomResults, leftover, leftoverStudents};
 }
 function renderResults(data){
 const {roomResults, leftover} = data;
-document.getElementById('printInst').textContent = document.getElementById('instName').value || 'Institute';
 const examTitle = document.getElementById('examTitle').value;
 const examDate = document.getElementById('examDate').value;
 document.getElementById('printExam').textContent =
@@ -2651,11 +2702,10 @@ addSummaryBox(entries.length);
 const spacer = ws.addRow([]);
 spacer.height = ROW_HEIGHT;
 // Each hall's attendance block starts on its own printed page — a
-// manual page break right after its spacer row, skipped only on the
-// very last block (unless a "Not Seated" section follows it) so we
-// don't leave a trailing blank page.
+// manual page break right after its spacer row, skipped on the very
+// last block so we don't leave a trailing blank page.
 const isLastRoom = idx === lastResults.roomResults.length - 1;
-if (!isLastRoom || leftover.length) spacer.addPageBreak();
+if (!isLastRoom) spacer.addPageBreak();
 });
 const tag = examFileTag();
 const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
@@ -2797,33 +2847,45 @@ if (roll) return list.findIndex(s => (s.roll||'') === roll);
 return list.findIndex(s => (s.name||'') === name);
 }
 // Manually moving one student to a different slot pulls a random
+// Manually moving one student to a different slot pulls a random
 // swap-back partner out of that target slot into the vacated seat, so
 // both slots keep the same total headcount — "as soon as we change one
 // student's slot, another student automatically comes in to fill it."
-// Transport-fixed students are never moved and never picked as a
-// swap-back partner, so the transport guarantee holds either way.
+// The ONE exception: moving a student INTO the transport-fixed slot
+// never displaces anyone there — transport students' seats are fixed
+// and must never be bumped by an incoming swap. So a move into the
+// fixed slot is a plain add (the fixed slot just gains a member); a
+// move OUT of the fixed slot (to either of the other two) still gets a
+// normal swap-back, keeping the fixed slot's headcount stable when
+// someone leaves it. Swaps stay fully bidirectional between the two
+// non-fixed slots either way.
 function manualMoveStudent(fromKey, roll, name, toKey){
 if (!lastSlotResults || fromKey === toKey) return;
 const fromList = lastSlotResults[fromKey];
 const toList = lastSlotResults[toKey];
-const transportSet = new Set(lastSlotResults.transportMatched);
 const idx = findStudentByIdentity(fromList, roll, name);
 if (idx === -1) return;
 const student = fromList[idx];
-if (transportSet.has(student)){
+const toLabel = SLOT_DEFS.find(d => d.key === toKey).label;
+const fromLabel = SLOT_DEFS.find(d => d.key === fromKey).label;
+const fixedKey = lastSlotResults.fixedSlotKey || transportFixedSlot;
+if (toKey === fixedKey){
+fromList.splice(idx, 1);
+toList.push(student);
+slotEditsUnsaved = true;
+updateSlotSaveUI();
+renderSlotResults(lastSlotResults);
+genStatus.className = 'status ok';
+genStatus.textContent = `Moved ${student.name} to ${toLabel} — no one there was displaced, since that slot is transport-fixed. Remember to Save when you're done.`;
+return;
+}
+if (!toList.length){
 genStatus.className = 'status err';
-genStatus.textContent = "Transport students stay fixed to their slot and can't be moved manually.";
+genStatus.textContent = `Can't move — ${toLabel} is empty, so there's no one to swap back automatically.`;
 renderSlotResults(lastSlotResults);
 return;
 }
-const candidates = toList.filter(s => !transportSet.has(s));
-if (!candidates.length){
-genStatus.className = 'status err';
-genStatus.textContent = `Can't move — ${SLOT_DEFS.find(d => d.key === toKey).label} has no non-transport student available to swap back automatically.`;
-renderSlotResults(lastSlotResults);
-return;
-}
-const partner = candidates[Math.floor(Math.random() * candidates.length)];
+const partner = toList[Math.floor(Math.random() * toList.length)];
 fromList.splice(idx, 1);
 toList.splice(toList.indexOf(partner), 1);
 toList.push(student);
@@ -2832,7 +2894,7 @@ slotEditsUnsaved = true;
 updateSlotSaveUI();
 renderSlotResults(lastSlotResults);
 genStatus.className = 'status ok';
-genStatus.textContent = `Moved ${student.name} to ${SLOT_DEFS.find(d => d.key === toKey).label}; swapped ${partner.name} into ${SLOT_DEFS.find(d => d.key === fromKey).label} to keep both slots full. Remember to Save when you're done.`;
+genStatus.textContent = `Moved ${student.name} to ${toLabel}; swapped ${partner.name} into ${fromLabel} to keep both slots full. Remember to Save when you're done.`;
 }
 function saveSlotPlan(){
 if (!lastSlotResults) return;
@@ -2858,7 +2920,6 @@ transportStatus.textContent = `Removed ${removedCount} unmatched student(s) from
 assignSlots();
 }
 function renderSlotResults(data){
-document.getElementById('printInst').textContent = document.getElementById('instName').value || 'Institute';
 const examTitle = document.getElementById('examTitle').value;
 const examDate = document.getElementById('examDate').value;
 document.getElementById('printExam').textContent = [examTitle, examDate].filter(Boolean).join(' · ');
@@ -2871,10 +2932,6 @@ html += `<div class="leftover no-print"><strong>Warning:</strong> ${data.unmatch
 if (data.excludedBySelection && data.excludedBySelection.length){
 html += `<div class="info-note no-print">${data.excludedBySelection.length} transport student(s) belong to a class/batch not ticked in Step 2, so they were skipped (not an error): ${data.excludedBySelection.map(t => t.name || t.roll).join(', ')}.</div>`;
 }
-if (data.transportMatched.length > data.capacity){
-const fixedLabel = SLOT_DEFS.find(d => d.key === (data.fixedSlotKey || transportFixedSlot)).label;
-html += `<div class="leftover no-print"><strong>Note:</strong> ${fixedLabel} has ${data.transportMatched.length} transport student(s), above the configured capacity of ${data.capacity}. All transport students have still been kept in ${fixedLabel} since that's a fixed requirement.</div>`;
-}
 if (data.unplaced.length){
 html += `<div class="leftover no-print"><strong>Warning:</strong> All 3 slots are full at ${data.capacity} seats each. ${data.unplaced.length} student(s) could not be placed in any slot — increase the seats-per-slot capacity or move them manually.</div>`;
 }
@@ -2884,6 +2941,12 @@ const lists = [
 {def: SLOT_DEFS[2], list: data.slot3}
 ];
 const transportSet = new Set(data.transportMatched);
+const fixedKeyNow = data.fixedSlotKey || transportFixedSlot;
+const transportInFixedSlot = (data[fixedKeyNow] || []).filter(s => transportSet.has(s)).length;
+if (transportInFixedSlot > data.capacity){
+const fixedLabel = SLOT_DEFS.find(d => d.key === fixedKeyNow).label;
+html += `<div class="leftover no-print"><strong>Note:</strong> ${fixedLabel} currently has ${transportInFixedSlot} transport student(s), above the configured capacity of ${data.capacity}.</div>`;
+}
 lists.forEach(({def, list}) => {
 const classBreakdown = classBreakdownOf(list);
 const sortedList = sortByBatchThenName(list);
@@ -2892,15 +2955,13 @@ html += `<div class="room-card">
 <h3>${def.label} &nbsp;<span style="color:var(--slate);font-weight:400;font-size:14px;">${def.timing}</span></h3>
 <div class="meta">Capacity ${data.capacity} &nbsp;·&nbsp; Seated ${list.length}</div>
 <div class="batches">${classBreakdown.map(c => `<span class="badge">${c.name}: ${c.count}</span>`).join('')}</div>
-${anyTransportHere ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px;"><span style="display:inline-block;width:11px;height:11px;background:#FDE3D0;border:1px solid var(--maroon);border-radius:2px;vertical-align:-1px;margin-right:5px;"></span>Transport student</div>` : ''}
+${anyTransportHere ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px;"><span style="display:inline-block;width:11px;height:11px;background:#FDE3D0;border:1px solid var(--maroon);border-radius:2px;vertical-align:-1px;margin-right:5px;"></span>Transport student — movable like anyone else, just flagged for reference</div>` : ''}
 <table class="data">
 <thead><tr><th>Name</th><th>Admission No.</th><th>Class</th><th>Batch</th><th>Father's Name</th><th class="no-print" style="width:150px;">Move to</th></tr></thead>
 <tbody>
 ${sortedList.map(s => {
 const isTransport = transportSet.has(s);
-const moveCell = isTransport
-? `<span style="color:var(--slate);font-size:11.5px;">fixed</span>`
-: `<select class="slotMoveSelect" data-from="${def.key}" data-roll="${escapeHtml(s.roll||'')}" data-name="${escapeHtml(s.name||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:12.5px;color:var(--ink);font-family:var(--font-body);">
+const moveCell = `<select class="slotMoveSelect" data-from="${def.key}" data-roll="${escapeHtml(s.roll||'')}" data-name="${escapeHtml(s.name||'')}" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:12.5px;color:var(--ink);font-family:var(--font-body);">
 ${SLOT_DEFS.map(d => `<option value="${d.key}" ${d.key===def.key?'selected':''}>${d.label}</option>`).join('')}
 </select>`;
 return `<tr${isTransport ? ' style="background:#FDE3D0;"' : ''}><td>${s.name}</td><td>${s.roll}</td><td>${s.cls}</td><td>${s.batch}</td><td>${s.father}</td><td class="no-print">${moveCell}</td></tr>`;
@@ -2944,15 +3005,18 @@ if (removeBtn) removeBtn.addEventListener('click', removeUnmatchedTransport);
 }
 function buildSlotSheet(wb, data){
 const ws = wb.addWorksheet('Slot Assignment');
-ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22}];
-addTitleBanner(ws, 'Test Seating Plan', 6);
+const anySubjectiveTiming = SLOT_DEFS.some(d => SUBJECTIVE_TIMINGS[d.key].trim());
+ws.columns = anySubjectiveTiming
+? [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:26}]
+: [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22}];
+addTitleBanner(ws, 'Test Seating Plan', anySubjectiveTiming ? 7 : 6);
 const flat = [];
 [{def: SLOT_DEFS[0], list: data.slot1},
 {def: SLOT_DEFS[1], list: data.slot2},
 {def: SLOT_DEFS[2], list: data.slot3}].forEach(({def, list}) => {
-list.forEach(s => flat.push({student: s, slotLabel: def.timing}));
+list.forEach(s => flat.push({student: s, slotLabel: def.timing, slotKey: def.key}));
 });
-data.unplaced.forEach(s => flat.push({student: s, slotLabel: 'Not Assigned'}));
+data.unplaced.forEach(s => flat.push({student: s, slotLabel: 'Not Assigned', slotKey: null}));
 const transportSet = new Set(data.transportMatched);
 // Single continuous table — sorted Batch then Student Name — so the
 // Batch column alone identifies each group without a repeated banner.
@@ -2961,10 +3025,14 @@ const batchCompare = (a.student.batch||'').localeCompare(b.student.batch||'', un
 if (batchCompare !== 0) return batchCompare;
 return a.student.name.localeCompare(b.student.name, undefined, {sensitivity:'base'});
 });
-const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot']);
+const headers = ['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot'];
+if (anySubjectiveTiming) headers.push('Subjective Test Timing');
+const headRow = ws.addRow(headers);
 styleHeaderRow(headRow);
 sorted.forEach(f => {
-const row = ws.addRow([f.student.roll, f.student.name, f.student.father, f.student.cls, f.student.batch, f.slotLabel]);
+const rowValues = [f.student.roll, f.student.name, f.student.father, f.student.cls, f.student.batch, f.slotLabel];
+if (anySubjectiveTiming) rowValues.push(f.slotKey ? SUBJECTIVE_TIMINGS[f.slotKey] : '');
+const row = ws.addRow(rowValues);
 const isTransport = transportSet.has(f.student);
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
@@ -3046,7 +3114,7 @@ const lists = [
 ];
 lists.forEach(({def, list}, idx) => {
 const entries = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
-const bandRow = ws.addRow([`${def.label} (${def.timing})   |   Students ${entries.length}`]);
+const bandRow = ws.addRow([`${def.full}   |   Students ${entries.length}`]);
 ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
 bandRow.height = ROW_HEIGHT;
 const bandCell = bandRow.getCell(1);
@@ -3142,11 +3210,14 @@ pendingCancelAction = null;
 if (cancelAction) cancelAction();
 }
 });
-generateBtn.addEventListener('click', () => askConfirm(
+generateBtn.addEventListener('click', () => {
+if (!examDetailsValid()) return;
+askConfirm(
 'Generate the seating plan?',
 'This will shuffle and assign students to the ticked halls based on your current settings.',
 runGeneration
-));
+);
+});
 reshuffleBtn.addEventListener('click', () => askConfirm(
 'Reshuffle students?',
 'This reshuffles which students sit where — the class pairing per hall stays the same.',
@@ -3161,6 +3232,7 @@ printBtn.addEventListener('click', () => window.print());
 excelBtn.addEventListener('click', exportToExcel);
 attendanceBtn.addEventListener('click', exportAttendanceExcel);
 assignSlotsBtn.addEventListener('click', () => {
+if (!examDetailsValid()) return;
 const fixedLabel = SLOT_DEFS.find(d => d.key === transportFixedSlot).label;
 const otherLabels = SLOT_DEFS.filter(d => d.key !== transportFixedSlot).map(d => d.label).join(' & ');
 askConfirm(
@@ -3692,7 +3764,7 @@ openCouponsPrintWindow(filtered);
 function openCouponsPrintWindow(coupons){
 const logoImg = document.querySelector('.masthead img');
 const logoSrc = logoImg ? logoImg.src : '';
-const instName = document.getElementById('instName').value.trim() || 'iQuest';
+const instName = 'iQuest';
 const examTitle = document.getElementById('examTitle').value.trim() || 'Admission Test';
 const examDateStr = formatExamDate();
 const perPage = 16;
@@ -3729,11 +3801,14 @@ body{margin:0;font-family:Arial, sans-serif;}
 </body></html>`);
 win.document.close();
 }
-admGenerateBtn.addEventListener('click', () => askConfirm(
+admGenerateBtn.addEventListener('click', () => {
+if (!examDetailsValid()) return;
+askConfirm(
 'Generate the admission test seating plan?',
 'This assigns the manually entered class counts (for the selected slot) into halls, keeping the same class/grade apart in each hall.',
 runAdmissionGeneration
-));
+);
+});
 admReshuffleBtn.addEventListener('click', () => askConfirm(
 'Reshuffle?',
 'This reshuffles which token sits where for the selected slot, using the same halls and counts.',
