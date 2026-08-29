@@ -254,18 +254,25 @@ table.data tr.batch-row td:first-child{padding-left:16px;}
 display:inline-block;background:linear-gradient(145deg, var(--ink-soft) 0%, var(--ink) 100%);color:#fff;font-family:var(--font-mono);
 font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:0.2px;box-shadow:0 1px 3px rgba(11,61,102,.25);
 }
-.room-row{display:grid;grid-template-columns:1fr 110px 170px 130px 36px;gap:10px;margin-bottom:10px;align-items:end;}
+.room-row{display:grid;grid-template-columns:1fr 110px 220px 130px 36px;gap:10px;margin-bottom:10px;align-items:end;}
 .pin-trigger{
-width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
-background:#fff;font-size:13px;color:var(--ink);font-family:var(--font-body);cursor:pointer;
-white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s,box-shadow .15s;
+width:100%;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius);
+background:#fff;font-size:12.5px;color:var(--ink);font-family:var(--font-body);cursor:pointer;
+white-space:normal;word-break:break-word;line-height:1.3;min-height:38px;
+display:flex;align-items:center;box-sizing:border-box;
+transition:border-color .15s,box-shadow .15s;
 }
 .pin-trigger:hover{border-color:var(--gold);}
 .pin-panel{
 display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;
 border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);
-max-height:220px;overflow-y:auto;padding:6px;margin-top:4px;
+max-height:270px;overflow-y:auto;padding:6px;margin-top:4px;
 }
+.pin-search{
+width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius-sm);
+font-size:12.5px;color:var(--ink);font-family:var(--font-body);box-sizing:border-box;margin-bottom:6px;
+}
+.pin-search:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
 .pin-option{display:flex;align-items:center;gap:9px;padding:7px 6px;font-size:13px;color:var(--ink);cursor:pointer;border-radius:var(--radius);}
 .pin-option:hover{background:var(--paper);}
 .pin-option input{width:15px;height:15px;margin:0;accent-color:var(--gold);flex-shrink:0;}
@@ -1124,14 +1131,33 @@ panel.innerHTML = '';
 if (!classNames.length){
 panel.innerHTML = '<div style="padding:8px 4px;color:var(--slate);font-size:12.5px;">Upload a student list first.</div>';
 trigger.textContent = pinTriggerLabel(row);
+trigger.title = trigger.textContent;
 return;
 }
+// A quick search box at the top — typing filters the list below instead
+// of having to scroll through every class/batch to find one. Typing
+// only hides/shows existing checkboxes (filterPinOptions) rather than
+// rebuilding the panel, so the search box never loses focus mid-type;
+// the typed text is remembered on the row so it survives a rebuild
+// triggered by ticking a checkbox.
+const searchInput = document.createElement('input');
+searchInput.type = 'text';
+searchInput.className = 'pin-search';
+searchInput.placeholder = 'Search class / batch…';
+searchInput.value = row.pinSearchText || '';
+searchInput.addEventListener('click', e => e.stopPropagation());
+searchInput.addEventListener('input', () => {
+row.pinSearchText = searchInput.value;
+filterPinOptions(panel, searchInput.value);
+});
+panel.appendChild(searchInput);
 classNames.forEach(c => {
 const batches = [...groups[c]].sort((a, b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
 const singleBatch = batches.length === 1 && batches[0] === c;
 const classLabel = document.createElement('label');
 classLabel.className = 'pin-option';
 classLabel.style.fontWeight = '700';
+classLabel.dataset.searchText = c.toLowerCase();
 const classCheckbox = document.createElement('input');
 classCheckbox.type = 'checkbox';
 classCheckbox.checked = hasPin(row, 'class', c);
@@ -1155,6 +1181,7 @@ bLabel.className = 'pin-option';
 bLabel.style.paddingLeft = '22px';
 bLabel.style.color = 'var(--slate)';
 bLabel.style.fontSize = '12.5px';
+bLabel.dataset.searchText = b.toLowerCase();
 const bCheckbox = document.createElement('input');
 bCheckbox.type = 'checkbox';
 bCheckbox.checked = hasPin(row, 'batch', b);
@@ -1175,7 +1202,16 @@ updateSelectedSummary();
 }
 });
 trigger.textContent = pinTriggerLabel(row);
+trigger.title = trigger.textContent;
+filterPinOptions(panel, row.pinSearchText || '');
 syncPinCheckboxStates(row);
+}
+function filterPinOptions(panel, query){
+const q = query.trim().toLowerCase();
+panel.querySelectorAll('.pin-option').forEach(opt => {
+const text = opt.dataset.searchText || opt.textContent.toLowerCase();
+opt.style.display = (!q || text.includes(q)) ? '' : 'none';
+});
 }
 function syncPinCheckboxStates(row){
 const atMax = row.pins.length >= 2;
