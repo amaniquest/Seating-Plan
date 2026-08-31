@@ -264,9 +264,10 @@ transition:border-color .15s,box-shadow .15s;
 }
 .pin-trigger:hover{border-color:var(--gold);}
 .pin-panel{
-display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;
+display:none;position:absolute;top:100%;left:0;right:auto;z-index:50;background:#fff;
 border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);
 max-height:270px;overflow-y:auto;padding:6px;margin-top:4px;
+min-width:100%;width:max-content;max-width:min(360px, 90vw);
 }
 .pin-search{
 width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius-sm);
@@ -685,10 +686,12 @@ Add subjective-test timings for this exam (optional — only when there's a subj
 // NOTE: this is a client-side check only, for casual/accidental-access
 // protection — the credentials live in this file's own source, so
 // anyone who opens "view source" on the page can read them. It is NOT
-// real security. To change the username/password, edit the two
-// constants below and re-save this file.
-const APP_USERNAME = 'Aman Goyal';
-const APP_PASSWORD = 'Ananya@123';
+// real security. To add/change/remove a user, edit the list below and
+// re-save this file.
+const VALID_USERS = [
+{username:'Aman Goyal', password:'Ananya@123'},
+{username:'Naresh', password:'Naresh@123'}
+];
 const SESSION_KEY = 'examSeatingPlanSession';
 const SESSION_TIMEOUT_MS = 10 * 60 * 1000; // auto-logout after 10 min of inactivity
 const loginOverlay = document.getElementById('loginOverlay');
@@ -722,7 +725,8 @@ loginError.textContent = '';
 }
 let lastActivityTime = Date.now();
 function tryLogin(){
-if (loginUser.value === APP_USERNAME && loginPass.value === APP_PASSWORD){
+const match = VALID_USERS.find(u => u.username === loginUser.value && u.password === loginPass.value);
+if (match){
 lastActivityTime = Date.now();
 saveSession(lastActivityTime);
 showApp();
