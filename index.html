@@ -2730,8 +2730,12 @@ return;
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
 ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
-const examTitleVal = document.getElementById('examTitle').value.trim() || 'Test Attendance';
-addTitleBanner(ws, examTitleVal, 7);
+addTitleBanner(ws, 'Test Attendance', 7, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
+// Repeat the title+date banner (rows 1-2) at the top of EVERY printed
+// page — otherwise, with a page break before each hall, only the very
+// first page would show it.
+ws.pageSetup = ws.pageSetup || {};
+ws.pageSetup.printTitlesRow = '1:2';
 const ROW_HEIGHT = 30;
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
@@ -3162,8 +3166,12 @@ return;
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
 ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
-const examTitleVal = document.getElementById('examTitle').value.trim() || 'Test Attendance';
-addTitleBanner(ws, examTitleVal, 7);
+addTitleBanner(ws, 'Test Attendance', 7, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
+// Repeat the title+date banner (rows 1-2) at the top of EVERY printed
+// page — otherwise, with a page break before each slot, only the very
+// first page would show it.
+ws.pageSetup = ws.pageSetup || {};
+ws.pageSetup.printTitlesRow = '1:2';
 const ROW_HEIGHT = 30;
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
