@@ -255,6 +255,8 @@ display:inline-block;background:linear-gradient(145deg, var(--ink-soft) 0%, var(
 font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:0.2px;box-shadow:0 1px 3px rgba(11,61,102,.25);
 }
 .room-row{display:grid;grid-template-columns:1fr 110px 220px 130px 36px;gap:10px;margin-bottom:10px;align-items:end;}
+#roomRows.pinning-off .room-row{grid-template-columns:1fr 110px 130px 36px;}
+#roomRows.pinning-off .room-row .pin-cell{display:none;}
 .pin-trigger{
 width:100%;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius);
 background:#fff;font-size:12.5px;color:var(--ink);font-family:var(--font-body);cursor:pointer;
@@ -566,6 +568,10 @@ body{background:#fff;}
 <button class="ghost" id="assignHallsBtn" type="button">Auto-assign halls…</button>
 <div class="status" id="autoHallsStatus" style="margin-top:0;"></div>
 </div>
+<label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13.5px;color:var(--ink);letter-spacing:0;margin-bottom:14px;cursor:pointer;">
+<input type="checkbox" id="hallPinningEnabled" style="width:16px;height:16px;margin:0;">
+Pin a class/batch to specific hall(s) (optional — only when a hall needs to be reserved for a particular group)
+</label>
 <div id="roomRows"></div>
 <div class="row-actions">
 <button class="ghost" id="addRoomBtn" type="button">+ Add hall</button>
@@ -830,6 +836,32 @@ const classSelectStatus = document.getElementById('classSelectStatus');
 const selectAllClassesBtn = document.getElementById('selectAllClassesBtn');
 const selectNoneClassesBtn = document.getElementById('selectNoneClassesBtn');
 const roomRows = document.getElementById('roomRows');
+// Pinning is off by default — most halls just run the normal
+// auto-pairing, and pinning is only needed occasionally. Ticking this
+// on reveals the "Pin class/batch" control on every hall row; unticking
+// it hides the control AND clears any pins already set, so the halls
+// fully revert to normal behaviour rather than leaving a hidden pin
+// silently still in effect.
+const hallPinningEnabled = document.getElementById('hallPinningEnabled');
+roomRows.classList.add('pinning-off');
+hallPinningEnabled.addEventListener('change', () => {
+if (hallPinningEnabled.checked){
+roomRows.classList.remove('pinning-off');
+} else {
+Array.from(roomRows.querySelectorAll('.room-row')).forEach(row => {
+if (row.pins && row.pins.length){
+row.pins = [];
+const useBox = row.querySelector('.roomUse');
+useBox.disabled = false;
+useBox.title = '';
+populatePinPanel(row);
+}
+});
+roomRows.classList.add('pinning-off');
+updateSelectedSummary();
+updateCapacitySummary();
+}
+});
 const addRoomBtn = document.getElementById('addRoomBtn');
 const generateBtn = document.getElementById('generateBtn');
 const reshuffleBtn = document.getElementById('reshuffleBtn');
@@ -1039,7 +1071,7 @@ row.innerHTML = `
 <label>Capacity</label>
 <input type="number" class="roomCap" min="1" value="${cap||''}">
 </div>
-<div style="position:relative;">
+<div class="pin-cell" style="position:relative;">
 <label>Pin class/batch (optional, max 2)</label>
 <button type="button" class="pin-trigger">— Shuffle —</button>
 <div class="pin-panel"></div>
@@ -1064,6 +1096,12 @@ if (row.pins.length){
 useBox.checked = true;
 useBox.disabled = true;
 row.classList.remove('disabled');
+// Loaded pins (e.g. from a saved room list) should never sit hidden
+// behind the collapsed toggle — reveal the pinning UI automatically.
+if (hallPinningEnabled && !hallPinningEnabled.checked){
+hallPinningEnabled.checked = true;
+roomRows.classList.remove('pinning-off');
+}
 }
 setupPinPanel(row);
 populatePinPanel(row);
@@ -2539,7 +2577,7 @@ cell.border = THIN_BORDER;
 function buildSeatingSheet(wb, roomResults){
 const ws = wb.addWorksheet('Seating Plan');
 ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:14}];
-addTitleBanner(ws, 'Test Seating Plan', 6);
+addTitleBanner(ws, 'Test Seating Plan', 6, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
 const flat = [];
 roomResults.forEach(r => {
 r.seatEntries.forEach(e => flat.push({student: e.student, hall: r.room.name}));
@@ -2554,7 +2592,11 @@ return (a.student.name||'').localeCompare(b.student.name||'', undefined, {sensit
 });
 const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Hall No.']);
 styleHeaderRow(headRow);
-sorted.forEach(f => {
+// Alternating row shading — every 2nd row gets "White, Background 1,
+// Darker 35%" (#A6A6A6) — so on a crowded notice board a student can
+// track their own row across the width of the table more easily.
+const BAND_FILL = {type:'pattern', pattern:'solid', fgColor:{argb:'FFA6A6A6'}};
+sorted.forEach((f, idx) => {
 const row = ws.addRow([
 f.student.roll,
 f.student.name,
@@ -2565,6 +2607,7 @@ f.hall
 ]);
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
+if (idx % 2 === 1) cell.fill = BAND_FILL;
 cell.alignment = (colNumber === 2 || colNumber === 3)
 ? {horizontal:'left', vertical:'middle'}
 : {horizontal:'center', vertical:'middle'};
@@ -2642,23 +2685,27 @@ return d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric
 // Inserts a two-line title banner at the very top of a sheet — titleText
 // on its own bold row, then "Test Date: ..." below it — both merged
 // across the sheet's full column count.
-function addTitleBanner(ws, titleText, numCols){
+function addTitleBanner(ws, titleText, numCols, opts){
+opts = opts || {};
 const dateStr = formatExamDate();
+const titleSize = opts.titleSize || 14;
+const dateSize = opts.dateSize || 11;
+const align = opts.align || 'left';
 const titleRow = ws.addRow([titleText || 'Test']);
 ws.mergeCells(titleRow.number, 1, titleRow.number, numCols);
-titleRow.height = 24;
+titleRow.height = Math.round(titleSize * 1.7);
 const titleCell = titleRow.getCell(1);
-titleCell.font = {bold:true, size:14, color:{argb:'FF1B2A4A'}};
-titleCell.alignment = {vertical:'middle', horizontal:'left'};
+titleCell.font = {bold:true, size:titleSize, color:{argb:'FF1B2A4A'}};
+titleCell.alignment = {vertical:'middle', horizontal:align};
 if (dateStr){
 const dateRow = ws.addRow([`Test Date: ${dateStr}`]);
 ws.mergeCells(dateRow.number, 1, dateRow.number, numCols);
-dateRow.height = 20;
+dateRow.height = Math.round(dateSize * 1.7);
 const dateCell = dateRow.getCell(1);
-dateCell.font = {bold:true, size:11, color:{argb:'FF5B6B82'}};
-dateCell.alignment = {vertical:'middle', horizontal:'left'};
+dateCell.font = {bold:true, size:dateSize, color:{argb:'FF5B6B82'}};
+dateCell.alignment = {vertical:'middle', horizontal:align};
 }
-ws.addRow([]);
+if (!opts.skipBlankRow) ws.addRow([]);
 }
 async function exportToExcel(){
 if (!lastResults){
