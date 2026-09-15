@@ -2729,23 +2729,23 @@ return;
 }
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
-ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
-addTitleBanner(ws, 'Test Attendance', 7, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
-// Repeat the title+date banner (rows 1-2) at the top of EVERY printed
-// page — otherwise, with a page break before each hall, only the very
-// first page would show it.
-ws.pageSetup = ws.pageSetup || {};
-ws.pageSetup.printTitlesRow = '1:2';
+ws.columns = [{width:16},{width:28},{width:24},{width:18},{width:16},{width:14}];
+// Fit-to-width printing (landscape, scaled to 1 page wide, height left
+// to flow across as many pages as a hall's student count needs) — so
+// printing needs no manual "shrink to fit" step, and a hall's own table
+// doesn't spill sideways into extra pages.
+ws.pageSetup = {orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
+margins:{left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.2, footer:0.2}};
 const ROW_HEIGHT = 30;
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
 // Students:" label in a second box, and an empty bordered box (for
 // writing the count by hand) right next to it.
-const summaryRow = ws.addRow(['', '', '', 'Absent Students:', '', '', '']);
+const summaryRow = ws.addRow(['', '', 'Absent Students:', '', '', '']);
 summaryRow.height = ROW_HEIGHT;
 ws.mergeCells(summaryRow.number, 1, summaryRow.number, 2);
-ws.mergeCells(summaryRow.number, 4, summaryRow.number, 5);
-ws.mergeCells(summaryRow.number, 6, summaryRow.number, 7);
+ws.mergeCells(summaryRow.number, 3, summaryRow.number, 4);
+ws.mergeCells(summaryRow.number, 5, summaryRow.number, 6);
 const labelCell = summaryRow.getCell(1);
 labelCell.value = `Total Students:   ${totalCount}`;
 labelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
@@ -2754,33 +2754,39 @@ labelCell.border = THIN_BORDER;
 labelCell.alignment = {horizontal:'left', vertical:'middle'};
 ws.getCell(summaryRow.number, 2).border = THIN_BORDER;
 ws.getCell(summaryRow.number, 2).fill = HALL_FILL;
-const absentLabelCell = summaryRow.getCell(4);
+const absentLabelCell = summaryRow.getCell(3);
 absentLabelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
 absentLabelCell.fill = HALL_FILL;
 absentLabelCell.border = THIN_BORDER;
 absentLabelCell.alignment = {horizontal:'left', vertical:'middle'};
-ws.getCell(summaryRow.number, 5).border = THIN_BORDER;
-ws.getCell(summaryRow.number, 5).fill = HALL_FILL;
-const boxCell = summaryRow.getCell(6);
+ws.getCell(summaryRow.number, 4).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 4).fill = HALL_FILL;
+const boxCell = summaryRow.getCell(5);
 boxCell.border = THIN_BORDER;
 boxCell.alignment = {horizontal:'center', vertical:'middle'};
-ws.getCell(summaryRow.number, 7).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 6).border = THIN_BORDER;
 }
 lastResults.roomResults.forEach((r, idx) => {
+// The "Test Attendance" + date banner is inserted fresh right before
+// EACH hall's own block — so it shows once at the start of every
+// hall's attendance, not repeated on every continuation page within
+// a single hall's table (which is what a global "repeat rows at top"
+// print setting would have done instead).
+addTitleBanner(ws, 'Test Attendance', 6, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
 const entries = r.seatEntries.slice().sort((a, b) => a.student.name.localeCompare(b.student.name, undefined, {sensitivity:'base'}));
 const bandRow = ws.addRow([`${r.room.name}   |   Students ${entries.length}`]);
-ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 6);
 bandRow.height = ROW_HEIGHT;
 const bandCell = bandRow.getCell(1);
 bandCell.font = {bold:true, size:12, color:{argb:'FF1B2A4A'}};
 bandCell.fill = HALL_FILL;
 bandCell.alignment = {vertical:'middle', horizontal:'left'};
-for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
-const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Hall No.', 'Sign']);
+for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Hall No.', 'Sign']);
 styleHeaderRow(headRow);
 headRow.height = ROW_HEIGHT;
 entries.forEach(e => {
-const row = ws.addRow([e.student.roll, e.student.name, e.student.father, e.student.cls, e.student.batch, r.room.name, '']);
+const row = ws.addRow([e.student.roll, e.student.name, e.student.father, e.student.batch, r.room.name, '']);
 row.height = ROW_HEIGHT;
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
@@ -3165,23 +3171,19 @@ return;
 }
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
-ws.columns = [{width:16},{width:26},{width:22},{width:16},{width:16},{width:22},{width:14}];
-addTitleBanner(ws, 'Test Attendance', 7, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
-// Repeat the title+date banner (rows 1-2) at the top of EVERY printed
-// page — otherwise, with a page break before each slot, only the very
-// first page would show it.
-ws.pageSetup = ws.pageSetup || {};
-ws.pageSetup.printTitlesRow = '1:2';
+ws.columns = [{width:16},{width:28},{width:24},{width:18},{width:16},{width:14}];
+ws.pageSetup = {orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
+margins:{left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.2, footer:0.2}};
 const ROW_HEIGHT = 30;
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
 // Students:" label in a second box, and an empty bordered box (for
 // writing the count by hand) right next to it.
-const summaryRow = ws.addRow(['', '', '', 'Absent Students:', '', '', '']);
+const summaryRow = ws.addRow(['', '', 'Absent Students:', '', '', '']);
 summaryRow.height = ROW_HEIGHT;
 ws.mergeCells(summaryRow.number, 1, summaryRow.number, 2);
-ws.mergeCells(summaryRow.number, 4, summaryRow.number, 5);
-ws.mergeCells(summaryRow.number, 6, summaryRow.number, 7);
+ws.mergeCells(summaryRow.number, 3, summaryRow.number, 4);
+ws.mergeCells(summaryRow.number, 5, summaryRow.number, 6);
 const labelCell = summaryRow.getCell(1);
 labelCell.value = `Total Students:   ${totalCount}`;
 labelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
@@ -3190,17 +3192,17 @@ labelCell.border = THIN_BORDER;
 labelCell.alignment = {horizontal:'left', vertical:'middle'};
 ws.getCell(summaryRow.number, 2).border = THIN_BORDER;
 ws.getCell(summaryRow.number, 2).fill = HALL_FILL;
-const absentLabelCell = summaryRow.getCell(4);
+const absentLabelCell = summaryRow.getCell(3);
 absentLabelCell.font = {bold:true, size:11.5, color:{argb:'FF1B2A4A'}};
 absentLabelCell.fill = HALL_FILL;
 absentLabelCell.border = THIN_BORDER;
 absentLabelCell.alignment = {horizontal:'left', vertical:'middle'};
-ws.getCell(summaryRow.number, 5).border = THIN_BORDER;
-ws.getCell(summaryRow.number, 5).fill = HALL_FILL;
-const boxCell = summaryRow.getCell(6);
+ws.getCell(summaryRow.number, 4).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 4).fill = HALL_FILL;
+const boxCell = summaryRow.getCell(5);
 boxCell.border = THIN_BORDER;
 boxCell.alignment = {horizontal:'center', vertical:'middle'};
-ws.getCell(summaryRow.number, 7).border = THIN_BORDER;
+ws.getCell(summaryRow.number, 6).border = THIN_BORDER;
 }
 const lists = [
 {def: SLOT_DEFS[0], list: lastSlotResults.slot1},
@@ -3208,20 +3210,25 @@ const lists = [
 {def: SLOT_DEFS[2], list: lastSlotResults.slot3}
 ];
 lists.forEach(({def, list}, idx) => {
+// The "Test Attendance" + date banner is inserted fresh right before
+// EACH slot's own block — so it shows once at the start of every
+// slot's attendance, not repeated on every continuation page within
+// a single slot's table.
+addTitleBanner(ws, 'Test Attendance', 6, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
 const entries = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
 const bandRow = ws.addRow([`${def.full}   |   Students ${entries.length}`]);
-ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 6);
 bandRow.height = ROW_HEIGHT;
 const bandCell = bandRow.getCell(1);
 bandCell.font = {bold:true, size:12, color:{argb:'FF1B2A4A'}};
 bandCell.fill = HALL_FILL;
 bandCell.alignment = {vertical:'middle', horizontal:'left'};
-for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
-const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot', 'Sign']);
+for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot', 'Sign']);
 styleHeaderRow(headRow);
 headRow.height = ROW_HEIGHT;
 entries.forEach(s => {
-const row = ws.addRow([s.roll, s.name, s.father, s.cls, s.batch, def.label, '']);
+const row = ws.addRow([s.roll, s.name, s.father, s.batch, def.label, '']);
 row.height = ROW_HEIGHT;
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
@@ -3240,20 +3247,21 @@ const isLastSlot = idx === lists.length - 1;
 if (!isLastSlot || lastSlotResults.unplaced.length) spacer.addPageBreak();
 });
 if (lastSlotResults.unplaced.length){
+addTitleBanner(ws, 'Test Attendance', 6, {titleSize:25, dateSize:20, align:'center', skipBlankRow:true});
 const entries = lastSlotResults.unplaced.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
 const bandRow = ws.addRow([`Not Assigned   |   Students ${entries.length}`]);
-ws.mergeCells(bandRow.number, 1, bandRow.number, 7);
+ws.mergeCells(bandRow.number, 1, bandRow.number, 6);
 bandRow.height = ROW_HEIGHT;
 const bandCell = bandRow.getCell(1);
 bandCell.font = {bold:true, size:12, color:{argb:'FFA9402F'}};
 bandCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFBEEEC'}};
 bandCell.alignment = {vertical:'middle', horizontal:'left'};
-for (let c = 1; c <= 7; c++) bandRow.getCell(c).border = THIN_BORDER;
-const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Class', 'Batch', 'Slot', 'Sign']);
+for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
+const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot', 'Sign']);
 styleHeaderRow(headRow);
 headRow.height = ROW_HEIGHT;
 entries.forEach(s => {
-const row = ws.addRow([s.roll, s.name, s.father, s.cls, s.batch, '-', '']);
+const row = ws.addRow([s.roll, s.name, s.father, s.batch, '-', '']);
 row.height = ROW_HEIGHT;
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
