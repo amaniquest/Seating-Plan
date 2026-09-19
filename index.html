@@ -2729,14 +2729,24 @@ return;
 }
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
-ws.columns = [{width:16},{width:28},{width:24},{width:18},{width:16},{width:14}];
-// Fit-to-width printing (landscape, scaled to 1 page wide, height left
-// to flow across as many pages as a hall's student count needs) — so
-// printing needs no manual "shrink to fit" step, and a hall's own table
-// doesn't spill sideways into extra pages.
+// Fit-to-width printing (scaled to 1 page wide, height left to flow
+// across as many pages as a hall's student count needs) — so printing
+// needs no manual "shrink to fit" step, and a hall's own table doesn't
+// spill sideways into extra pages.
 ws.pageSetup = {orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
 margins:{left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.2, footer:0.2}};
-const ROW_HEIGHT = 30;
+const ROW_HEIGHT = 32;
+// Each of the first 5 columns (Admission No. / Name / Father's Name /
+// Batch / Hall No.) is sized to its own longest value — tracked here as
+// header + student rows are built — rather than a fixed guess. The
+// Sign column then gets whatever's generously left over, since its
+// whole point is room for an actual handwritten signature, not fitting
+// any text of its own.
+const colMaxLen = [0, 0, 0, 0, 0];
+function trackLen(idx, val){
+const len = String(val == null ? '' : val).length;
+if (len > colMaxLen[idx]) colMaxLen[idx] = len;
+}
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
 // Students:" label in a second box, and an empty bordered box (for
@@ -2785,9 +2795,11 @@ for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
 const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Hall No.', 'Sign']);
 styleHeaderRow(headRow);
 headRow.height = ROW_HEIGHT;
+['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Hall No.'].forEach((h, i) => trackLen(i, h));
 entries.forEach(e => {
 const row = ws.addRow([e.student.roll, e.student.name, e.student.father, e.student.batch, r.room.name, '']);
 row.height = ROW_HEIGHT;
+[e.student.roll, e.student.name, e.student.father, e.student.batch, r.room.name].forEach((v, i) => trackLen(i, v));
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
 cell.alignment = (colNumber === 2 || colNumber === 3)
@@ -2804,6 +2816,8 @@ spacer.height = ROW_HEIGHT;
 const isLastRoom = idx === lastResults.roomResults.length - 1;
 if (!isLastRoom) spacer.addPageBreak();
 });
+colMaxLen.forEach((len, i) => { ws.getColumn(i + 1).width = Math.max(10, len + 2); });
+ws.getColumn(6).width = 22; // Sign — generous, fixed width for an actual handwritten signature
 const tag = examFileTag();
 const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
 await downloadWorkbook(wb, fileName);
@@ -3171,10 +3185,20 @@ return;
 }
 const wb = new ExcelJS.Workbook();
 const ws = wb.addWorksheet('Attendance');
-ws.columns = [{width:16},{width:28},{width:24},{width:18},{width:16},{width:14}];
 ws.pageSetup = {orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
 margins:{left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.2, footer:0.2}};
-const ROW_HEIGHT = 30;
+const ROW_HEIGHT = 32;
+// Each of the first 5 columns (Admission No. / Name / Father's Name /
+// Batch / Slot) is sized to its own longest value — tracked here as
+// header + student rows are built — rather than a fixed guess. The
+// Sign column then gets whatever's generously left over, since its
+// whole point is room for an actual handwritten signature, not fitting
+// any text of its own.
+const colMaxLen = [0, 0, 0, 0, 0];
+function trackLen(idx, val){
+const len = String(val == null ? '' : val).length;
+if (len > colMaxLen[idx]) colMaxLen[idx] = len;
+}
 function addSummaryBox(totalCount){
 // A clean bordered summary: "Total Students: N" in one box, "Absent
 // Students:" label in a second box, and an empty bordered box (for
@@ -3227,9 +3251,11 @@ for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
 const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot', 'Sign']);
 styleHeaderRow(headRow);
 headRow.height = ROW_HEIGHT;
+['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot'].forEach((h, i) => trackLen(i, h));
 entries.forEach(s => {
 const row = ws.addRow([s.roll, s.name, s.father, s.batch, def.label, '']);
 row.height = ROW_HEIGHT;
+[s.roll, s.name, s.father, s.batch, def.label].forEach((v, i) => trackLen(i, v));
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
 cell.alignment = (colNumber === 2 || colNumber === 3)
@@ -3257,12 +3283,14 @@ bandCell.font = {bold:true, size:12, color:{argb:'FFA9402F'}};
 bandCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFBEEEC'}};
 bandCell.alignment = {vertical:'middle', horizontal:'left'};
 for (let c = 1; c <= 6; c++) bandRow.getCell(c).border = THIN_BORDER;
-const headRow = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot', 'Sign']);
-styleHeaderRow(headRow);
-headRow.height = ROW_HEIGHT;
+const headRow2 = ws.addRow(['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot', 'Sign']);
+styleHeaderRow(headRow2);
+headRow2.height = ROW_HEIGHT;
+['Admission No.', 'Student Name', "Father's Name", 'Batch', 'Slot'].forEach((h, i) => trackLen(i, h));
 entries.forEach(s => {
 const row = ws.addRow([s.roll, s.name, s.father, s.batch, '-', '']);
 row.height = ROW_HEIGHT;
+[s.roll, s.name, s.father, s.batch, '-'].forEach((v, i) => trackLen(i, v));
 row.eachCell((cell, colNumber) => {
 cell.border = THIN_BORDER;
 cell.alignment = (colNumber === 2 || colNumber === 3)
@@ -3272,6 +3300,8 @@ cell.alignment = (colNumber === 2 || colNumber === 3)
 });
 addSummaryBox(entries.length);
 }
+colMaxLen.forEach((len, i) => { ws.getColumn(i + 1).width = Math.max(10, len + 2); });
+ws.getColumn(6).width = 22; // Sign — generous, fixed width for an actual handwritten signature
 const tag = examFileTag();
 const fileName = ['Attendance', tag].filter(Boolean).join('_') + '.xlsx';
 await downloadWorkbook(wb, fileName);
