@@ -197,6 +197,19 @@ border-color:var(--blue-dark);box-shadow:0 8px 20px rgba(185,79,30,.35);transfor
 .mode-tab:has(input:checked) .mode-tab-title{color:#fff;}
 .mode-tab:has(input:checked) .mode-tab-sub{color:rgba(255,255,255,.78);}
 .mode-tab:has(input:checked) .mode-tab-icon{background:rgba(255,255,255,.18);color:#fff;}
+.title-chips{display:flex;flex-wrap:wrap;gap:9px;}
+.title-chip{
+position:relative;display:inline-flex;align-items:center;gap:7px;
+padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;
+cursor:pointer;transition:border-color .18s,box-shadow .18s,background .18s;
+font-family:var(--font-body);font-size:13.5px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;
+}
+.title-chip input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+.title-chip:hover{border-color:var(--blue);}
+.title-chip:has(input:checked){
+background:linear-gradient(150deg, var(--blue) 0%, var(--blue-dark) 100%);
+border-color:var(--blue-dark);box-shadow:0 4px 12px rgba(185,79,30,.30);color:#fff;
+}
 label{display:block;font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--slate);margin-bottom:6px;}
 input[type=text],input[type=date],input[type=number],input[type=password]{
 width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--radius-sm);
@@ -479,16 +492,25 @@ body{background:#fff;}
 <input type="radio" name="testType" id="testTypeAdmission" value="admission">
 <span class="mode-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></span>
 <span class="mode-tab-text">
-<span class="mode-tab-title">I-SAT</span>
-<span class="mode-tab-sub">Admission Test</span>
+<span class="mode-tab-title">Admission</span>
+<span class="mode-tab-sub">Test</span>
 </span>
 </label>
 </div>
 </div>
 <div class="grid2">
-<div>
+<div id="examTitleTextWrap">
 <label for="examTitle">Exam / test title <span style="color:var(--red);">*</span></label>
 <input type="text" id="examTitle" placeholder="e.g. Monthly Test - July" required>
+</div>
+<div id="examTitleAdmWrap" style="display:none;">
+<label>Exam / test title <span style="color:var(--red);">*</span></label>
+<div class="title-chips" id="admTitleChips">
+<label class="title-chip"><input type="checkbox" class="admTitleOption" value="I-Smart"> I-Smart</label>
+<label class="title-chip"><input type="checkbox" class="admTitleOption" value="I-SAT-1"> I-SAT-1</label>
+<label class="title-chip"><input type="checkbox" class="admTitleOption" value="I-SAT-2"> I-SAT-2</label>
+<label class="title-chip"><input type="checkbox" class="admTitleOption" value="I-SAT-3"> I-SAT-3</label>
+</div>
 </div>
 <div>
 <label for="examDate">Date <span style="color:var(--red);">*</span></label>
@@ -672,6 +694,7 @@ Add subjective-test timings for this exam (optional — only when there's a subj
 <div class="row-actions" id="admissionGenerateControls" style="display:none;">
 <button class="action" id="admGenerateBtn" type="button">Generate seating plan</button>
 <button class="ghost" id="admReshuffleBtn" type="button" style="display:none;">Reshuffle</button>
+<button class="ghost" id="admAllShuffleBtn" type="button" style="display:none;">All Shuffle</button>
 <button class="ghost" id="admPrintBtn" type="button" style="display:none;">Print sheets</button>
 <button class="ghost" id="admExcelBtn" type="button" style="display:none;">Download Seating Excel</button>
 <button class="ghost" id="admAttendanceBtn" type="button" style="display:none;">Download Attendance Excel</button>
@@ -885,6 +908,19 @@ return false;
 }
 return true;
 }
+const examTitleInput = document.getElementById('examTitle');
+const examTitleTextWrap = document.getElementById('examTitleTextWrap');
+const examTitleAdmWrap = document.getElementById('examTitleAdmWrap');
+document.querySelectorAll('.admTitleOption').forEach(box => {
+box.addEventListener('change', () => {
+if (box.checked){
+document.querySelectorAll('.admTitleOption').forEach(other => { if (other !== box) other.checked = false; });
+examTitleInput.value = box.value;
+} else {
+examTitleInput.value = '';
+}
+});
+});
 const results = document.getElementById('results');
 const hallsSection = document.getElementById('hallsSection');
 const slotsSection = document.getElementById('slotsSection');
@@ -918,6 +954,7 @@ const admCapacitySummary = document.getElementById('admCapacitySummary');
 const admHallStatus = document.getElementById('admHallStatus');
 const admGenerateBtn = document.getElementById('admGenerateBtn');
 const admReshuffleBtn = document.getElementById('admReshuffleBtn');
+const admAllShuffleBtn = document.getElementById('admAllShuffleBtn');
 const admPrintBtn = document.getElementById('admPrintBtn');
 const admExcelBtn = document.getElementById('admExcelBtn');
 const admAttendanceBtn = document.getElementById('admAttendanceBtn');
@@ -1003,6 +1040,9 @@ renderSlotTimingRows();
 renderSubjectiveTimingRows();
 function setTestType(type){
 testType = type;
+examTitleTextWrap.style.display = type === 'admission' ? 'none' : '';
+examTitleAdmWrap.style.display = type === 'admission' ? '' : 'none';
+if (type === 'admission') examTitleInput.removeAttribute('required'); else examTitleInput.setAttribute('required','');
 hallsSection.style.display = type === 'offline' ? '' : 'none';
 slotsSection.style.display = type === 'online' ? '' : 'none';
 transportUploadContainer.style.display = type === 'online' ? '' : 'none';
@@ -3602,7 +3642,11 @@ if (take > 0) classesUsed.push(group.name);
 function admAllocate(classPool, rooms){
 const pool = classPool.map(g => ({name: g.name, group: g.group, students: shuffle(g.students.slice())}));
 const roomResultsByIndex = new Array(rooms.length);
-const processingOrder = rooms.map((r,i) => i).sort((i,j) => rooms[j].capacity - rooms[i].capacity);
+// Shuffled before the stable sort so equal-capacity halls land in a
+// random relative order each time — this is what gives "All Shuffle"
+// variety in which hall ends up hosting which class pairing (biggest
+// halls are still always processed first).
+const processingOrder = shuffle(rooms.map((r,i) => i)).sort((i,j) => rooms[j].capacity - rooms[i].capacity);
 processingOrder.forEach(roomIdx => {
 const room = rooms[roomIdx];
 const capacity = room.capacity;
@@ -3732,7 +3776,7 @@ leftover: res.leftover
 };
 renderAdmissionResults();
 admStatus('ok', `Placed ${total - res.leftover.length}/${total} students into halls for ${label} — 2 classes per hall where possible (grade groups never paired together), with spare seats topped up automatically before anyone is left unplaced.`);
-[admReshuffleBtn, admPrintBtn, admExcelBtn, admAttendanceBtn, admCouponsBtn].forEach(b => b.style.display = '');
+[admReshuffleBtn, admAllShuffleBtn, admPrintBtn, admExcelBtn, admAttendanceBtn, admCouponsBtn].forEach(b => b.style.display = '');
 }
 function renderAdmissionResults(){
 if (!lastAdmissionResults){ admissionResults.innerHTML = ''; return; }
@@ -3831,8 +3875,8 @@ function couponHtml(c, logoSrc, instName, examTitle, examDateStr){
 return `<div class="coupon">
 <div class="slot">${escapeHtml(c.label)}<span>${escapeHtml(c.timing)}</span></div>
 ${logoSrc ? `<img src="${logoSrc}" alt="logo">` : ''}
-<div class="doctype">Admission Test</div>
-<div class="exam">${escapeHtml(examTitle)}${examDateStr ? ' · ' + escapeHtml(examDateStr) : ''}</div>
+<div class="doctype">${escapeHtml(examTitle)}</div>
+${examDateStr ? `<div class="exam">${escapeHtml(examDateStr)}</div>` : ''}
 <div class="cls">${escapeHtml(c.cls)}</div>
 <div class="code">${escapeHtml(c.token)}</div>
 <div class="hall">${escapeHtml(c.hall)}</div>
@@ -3920,8 +3964,8 @@ body{margin:0;font-family:Arial, sans-serif;}
 .page:last-child{page-break-after:auto;}
 .coupon{position:relative;border:1px dashed #000;padding:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;}
 .coupon img{height:14mm;margin-bottom:1.5mm;filter:grayscale(100%);}
-.coupon .doctype{font-size:9px;color:#000;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;}
-.coupon .exam{font-size:8px;color:#333;margin-bottom:2mm;}
+.coupon .doctype{font-size:11px;color:#000;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;}
+.coupon .exam{font-size:10px;color:#333;margin-bottom:2mm;font-weight:600;}
 .coupon .cls{font-size:16px;font-weight:800;color:#000;}
 .coupon .code{font-size:7px;color:#333;font-family:monospace;margin-bottom:2mm;letter-spacing:0.2px;}
 .coupon .slot{position:absolute;top:1.5mm;right:1.5mm;display:flex;flex-direction:column;align-items:center;font-size:6.5px;font-weight:700;background:#000;color:#fff;padding:1mm 1.8mm;border-radius:1.5mm;line-height:1.3;}
@@ -3945,6 +3989,11 @@ runAdmissionGeneration
 admReshuffleBtn.addEventListener('click', () => askConfirm(
 'Reshuffle?',
 'This reshuffles which token sits where for the selected slot, using the same halls and counts.',
+runAdmissionGeneration
+));
+admAllShuffleBtn.addEventListener('click', () => askConfirm(
+'Reshuffle everything?',
+'This reshuffles the tokens, which classes get paired together, and which hall hosts each pairing.',
 runAdmissionGeneration
 ));
 admPrintBtn.addEventListener('click', () => window.print());
