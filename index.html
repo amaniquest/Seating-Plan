@@ -602,6 +602,10 @@ body{background:#fff;}
 <input type="checkbox" id="hallPinningEnabled" style="width:16px;height:16px;margin:0;">
 Pin a class/batch to specific hall(s) (optional — only when a hall needs to be reserved for a particular group)
 </label>
+<label style="display:flex;align-items:flex-start;gap:8px;text-transform:none;font-size:13.5px;color:var(--ink);letter-spacing:0;margin-bottom:14px;cursor:pointer;">
+<input type="checkbox" id="singleBatchMode" style="width:16px;height:16px;margin:2px 0 0;flex-shrink:0;">
+<span>Single-batch mode — seat only 4 rows per hall (optional — for when just one batch is giving the paper). Uses 2/3 of each hall's seats, e.g. a 48-seat hall takes 32 students.</span>
+</label>
 <div id="roomRows"></div>
 <div class="row-actions">
 <button class="ghost" id="addRoomBtn" type="button">+ Add hall</button>
@@ -875,6 +879,7 @@ const roomRows = document.getElementById('roomRows');
 // silently still in effect.
 const hallPinningEnabled = document.getElementById('hallPinningEnabled');
 roomRows.classList.add('pinning-off');
+document.getElementById('singleBatchMode').addEventListener('change', () => { updateCapacitySummary(); updateSelectedSummary(); });
 hallPinningEnabled.addEventListener('change', () => {
 if (hallPinningEnabled.checked){
 roomRows.classList.remove('pinning-off');
@@ -1332,6 +1337,14 @@ else if (pin.type === 'batch' && s.batch === pin.name) count++;
 });
 return count;
 }
+// Single-batch mode: only 4 of a hall's 6 rows are used, so every
+// unpinned hall seats 2/3 of its listed capacity (48 → 32). Pinned halls are
+// unaffected — they always seat their pinned group in full.
+function effCap(raw){
+const box = document.getElementById('singleBatchMode');
+const n = parseInt(raw, 10) || 0;
+return box && box.checked ? Math.floor(n * 4 / 6) : n;
+}
 function updateSelectedSummary(){
 const el = document.getElementById('selectedSummary');
 const rows = Array.from(roomRows.querySelectorAll('.room-row'));
@@ -1346,10 +1359,10 @@ const pinnedNote = pinnedRows.length
 ? `Pinned: ${pinnedRows.length} hall(s) locked in for ${pinnedStudents} student(s) — kept out of the totals below. `
 : '';
 const selectedRows = rows.filter(row => row.querySelector('.roomUse').checked
-&& (parseInt(row.querySelector('.roomCap').value, 10) || 0) > 0
+&& effCap(row.querySelector('.roomCap').value) > 0
 && (row.pins || []).length === 0);
 const total = selectedRows.reduce((sum, row) =>
-sum + (parseInt(row.querySelector('.roomCap').value, 10) || 0), 0);
+sum + effCap(row.querySelector('.roomCap').value), 0);
 if (!selectedRows.length){
 el.className = 'status';
 el.textContent = pinnedNote + (remaining ? 'No general (unpinned) halls ticked yet.' : 'All remaining students are already covered by pinned halls.');
@@ -1384,7 +1397,7 @@ return;
 }
 const caps = allRows
 .filter(row => (row.pins || []).length === 0)
-.map(row => parseInt(row.querySelector('.roomCap').value, 10) || 0)
+.map(row => effCap(row.querySelector('.roomCap').value))
 .filter(c => c > 0)
 .sort((a,b) => b - a);
 if (!caps.length){
@@ -1467,12 +1480,12 @@ row.classList.add('disabled');
 }
 });
 const sortedRows = shuffle(unpinnedRows).sort((a, b) => {
-const capA = parseInt(a.querySelector('.roomCap').value, 10) || 0;
-const capB = parseInt(b.querySelector('.roomCap').value, 10) || 0;
+const capA = effCap(a.querySelector('.roomCap').value);
+const capB = effCap(b.querySelector('.roomCap').value);
 return capB - capA;
 });
 sortedRows.forEach(row => {
-const cap = parseInt(row.querySelector('.roomCap').value, 10) || 0;
+const cap = effCap(row.querySelector('.roomCap').value);
 const useBox = row.querySelector('.roomUse');
 if (cumulative < needed && cap > 0){
 useBox.checked = true;
@@ -2029,8 +2042,10 @@ rows.forEach(row => {
 const used = row.querySelector('.roomUse').checked;
 if (!used) return;
 const name = row.querySelector('.roomName').value.trim();
-const cap = parseInt(row.querySelector('.roomCap').value, 10);
+const rawCap = parseInt(row.querySelector('.roomCap').value, 10);
 const pins = (row.pins || []).slice(0, 2);
+// Pinned halls keep their full listed capacity; only general halls shrink.
+const cap = pins.length ? rawCap : effCap(rawCap);
 if (name && cap > 0) out.push({name, capacity: cap, pins});
 });
 return out;
